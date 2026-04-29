@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Radical.</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Syne+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    html,body{width:100%;height:100%;overflow:hidden;background:#1f004d;font-family:'Outfit',sans-serif;cursor:none;}
+
+    /* ── CURSOR FIX ── */
+    #cursor{
+      position:fixed;z-index:99999;pointer-events:none;
+      width:12px;height:12px;border-radius:50%;
+      background:rgba(196,158,255,0.95);
+      box-shadow:0 0 14px rgba(196,158,255,0.8),0 0 28px rgba(120,50,255,0.4);
+      /* NO transform here — JS sets left/top directly with offset */
+      top:0;left:0;
+      transition:width .15s,height .15s,background .15s;
+    }
+    #cursor-ring{
+      position:fixed;z-index:99998;pointer-events:none;
+      width:38px;height:38px;border-radius:50%;
+      border:1.5px solid rgba(196,158,255,0.35);
+      top:0;left:0;
+      transition:width .28s,height .28s,border-color .2s;
+    }
+    #cursor.big{width:6px;height:6px;background:rgba(255,255,255,0.95);}
+    #cursor-ring.big{width:52px;height:52px;border-color:rgba(196,158,255,0.6);}
+
+    #bg{position:fixed;inset:0;z-index:0;}
+    #stars{position:fixed;inset:0;z-index:1;pointer-events:none;}
+
+    .center{
+      position:relative;z-index:10;
+      display:flex;flex-direction:column;align-items:center;gap:14px;
+      height:100vh;justify-content:center;
+    }
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+    @keyframes glowPulse{0%,100%{text-shadow:0 0 18px #c49eff88,0 0 55px #c49eff44;}50%{text-shadow:0 0 30px #c49effcc,0 0 80px #c49eff77;}}
+    @keyframes btnGlow{0%,100%{box-shadow:0 0 10px rgba(130,50,255,0.2);}50%{box-shadow:0 0 26px rgba(150,70,255,0.45);}}
+    @keyframes dotPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.7);}}
+    @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+
+    .logo-wrap{
+      position:relative;line-height:1;
+      animation:fadeUp 1.1s .05s cubic-bezier(.22,1,.36,1) both,floatY 6s 1.5s ease-in-out infinite;
+    }
+    .logo-solid{font-size:clamp(56px,10vw,80px);font-weight:800;letter-spacing:-2px;color:#c49eff;position:relative;z-index:2;animation:glowPulse 5s 1.5s ease-in-out infinite;}
+    .logo-outline{font-size:clamp(56px,10vw,80px);font-weight:800;letter-spacing:-2px;color:transparent;-webkit-text-stroke:1.5px rgba(196,158,255,0.35);position:absolute;top:5px;left:5px;z-index:1;pointer-events:none;}
+    .subtitle{font-family:'Syne Mono',monospace;font-size:12px;color:rgba(180,130,255,0.4);letter-spacing:5px;text-transform:lowercase;animation:fadeUp 1.1s .2s cubic-bezier(.22,1,.36,1) both;}
+
+    .btn-zone{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:8px;animation:fadeUp 1.1s .35s cubic-bezier(.22,1,.36,1) both;}
+    .enter-btn{
+      font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;letter-spacing:5px;text-transform:uppercase;
+      padding:13px 58px;border-radius:100px;border:1px solid rgba(155,90,255,0.4);
+      background:transparent;color:rgba(205,160,255,0.85);cursor:none;
+      animation:btnGlow 5s 2s ease-in-out infinite;
+      transition:color .25s,border-color .25s,transform .15s;
+    }
+    .enter-btn:hover{color:#ecdaff;border-color:rgba(200,145,255,0.85);}
+    .enter-btn:active{transform:scale(0.97);}
+
+    .widget-row{display:flex;gap:12px;margin-top:8px;width:100%;max-width:460px;animation:fadeUp 1.1s .5s cubic-bezier(.22,1,.36,1) both;}
+    .widget-card{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(196,158,255,.15);border-radius:16px;padding:14px 16px;cursor:none;transition:border-color .25s,transform .15s;}
+    .widget-card:hover{border-color:rgba(196,158,255,.35);}
+    .widget-card:active{transform:scale(0.97);}
+    .widget-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,158,255,.4);margin-bottom:6px;font-family:'Syne Mono',monospace;}
+    .widget-main{font-size:22px;font-weight:800;color:#c49eff;line-height:1.1;}
+    .widget-sub{font-size:11px;color:rgba(196,158,255,.5);margin-top:3px;}
+    .online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#3cff9a;margin-right:5px;box-shadow:0 0 6px #3cff9a;animation:dotPulse 2.5s ease-in-out infinite;}
+
+    /* NAME SCREEN */
+    #name-screen{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(10,0,28,0.97);transition:opacity .5s ease;}
+    #name-screen.out{opacity:0;pointer-events:none;}
+    .name-box{display:flex;flex-direction:column;align-items:center;gap:18px;animation:modalIn .5s cubic-bezier(.22,1,.36,1);width:min(360px,90vw);}
+    .name-logo{font-size:52px;font-weight:800;letter-spacing:-1px;color:#c49eff;text-shadow:0 0 30px #c49eff66,0 0 80px #c49eff33;}
+    .name-prompt{font-family:'Syne Mono',monospace;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(196,158,255,.45);}
+    .name-input{width:100%;padding:14px 20px;background:rgba(196,158,255,.06);border:1px solid rgba(196,158,255,.2);border-radius:14px;color:#e8d8ff;font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;outline:none;text-align:center;cursor:text;transition:border-color .25s,background .25s;}
+    .name-input::placeholder{color:rgba(196,158,255,.25);font-weight:400;}
+    .name-input:focus{border-color:rgba(196,158,255,.5);background:rgba(196,158,255,.1);}
+    .name-btn{width:100%;padding:13px;background:transparent;border:1px solid rgba(155,90,255,.4);border-radius:100px;color:rgba(205,160,255,.85);font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:none;animation:btnGlow 4s ease-in-out infinite;transition:color .25s,border-color .25s;}
+    .name-btn:hover{color:#ecdaff;border-color:rgba(200,145,255,.85);}
+    .name-skip{font-family:'Syne Mono',monospace;font-size:10px;letter-spacing:2px;color:rgba(196,158,255,.25);cursor:none;background:none;border:none;transition:color .2s;text-transform:uppercase;}
+    .name-skip:hover{color:rgba(196,158,255,.5);}
+    .name-greeting{font-size:13px;color:rgba(196,158,255,.5);font-family:'Syne Mono',monospace;letter-spacing:2px;min-height:18px;}
+
+    /* MODAL */
+    #modal-backdrop{position:fixed;inset:0;z-index:200;background:rgba(10,0,30,.72);display:flex;align-items:center;justify-content:center;cursor:none;animation:fadeUp .22s ease;}
+    #modal-backdrop.hiding{opacity:0;transition:opacity .2s ease;pointer-events:none;}
+    .modal-box{background:rgba(18,3,46,.98);border:1px solid rgba(196,158,255,.22);border-radius:22px;padding:28px 28px 24px;width:min(400px,90vw);position:relative;animation:modalIn .28s cubic-bezier(.22,1,.36,1);}
+    .modal-close{position:absolute;top:16px;right:18px;background:transparent;border:none;color:rgba(196,158,255,.4);font-size:18px;cursor:none;transition:color .2s;}
+    .modal-close:hover{color:rgba(196,158,255,.9);}
+    .modal-title{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,158,255,.4);font-family:'Syne Mono',monospace;margin-bottom:16px;}
+    .modal-big{font-size:42px;font-weight:800;color:#c49eff;line-height:1;margin-bottom:4px;}
+    .modal-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(196,158,255,.08);}
+    .modal-row:last-child{border-bottom:none;padding-bottom:0;}
+    .modal-row-label{font-size:12px;color:rgba(196,158,255,.5);font-family:'Syne Mono',monospace;letter-spacing:1px;}
+    .modal-row-val{font-size:14px;font-weight:700;color:#c49eff;}
+    .modal-refresh{margin-top:18px;width:100%;background:rgba(196,158,255,.06);border:1px solid rgba(196,158,255,.18);border-radius:10px;color:rgba(196,158,255,.6);font-family:'Outfit',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:9px;cursor:none;transition:background .2s,color .2s;}
+    .modal-refresh:hover{background:rgba(196,158,255,.14);color:#c49eff;}
+    .online-user-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(196,158,255,.07);font-size:13px;font-weight:600;color:#e0d0ff;}
+    .online-user-row:last-child{border-bottom:none;}
+    .online-user-dot{width:7px;height:7px;border-radius:50%;background:#3cff9a;box-shadow:0 0 5px #3cff9a;flex-shrink:0;}
+    .online-user-time{font-size:11px;color:rgba(196,158,255,.4);font-family:'Syne Mono',monospace;margin-left:auto;}
+  </style>
+</head>
+<body>
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+  <canvas id="bg"></canvas>
+  <canvas id="stars"></canvas>
+
+  <div id="name-screen">
+    <div class="name-box">
+      <div class="name-logo">radical.</div>
+      <div class="name-prompt">what do we call you?</div>
+      <input class="name-input" id="name-input" type="text" placeholder="your name..." maxlength="20" autocomplete="off" spellcheck="false"/>
+      <div class="name-greeting" id="name-greeting"></div>
+      <button class="name-btn" id="name-btn" onclick="submitName()">enter</button>
+      <button class="name-skip" onclick="submitName(true)">skip →</button>
+    </div>
+  </div>
+
+  <div class="center" id="main-center" style="opacity:0;transition:opacity .6s ease;">
+    <div class="logo-wrap">
+      <div class="logo-outline">radical.</div>
+      <div class="logo-solid">radical.</div>
+    </div>
+    <div class="subtitle" id="main-subtitle">just a test for now</div>
+    <div class="btn-zone">
+      <button class="enter-btn" onclick="goToHub()">Enter</button>
+    </div>
+    <div class="widget-row">
+      <div class="widget-card" onclick="openWeatherModal()">
+        <div class="widget-label">weather</div>
+        <div class="widget-main" id="w-temp">--°F</div>
+        <div class="widget-sub" id="w-cond">loading...</div>
+        <div class="widget-sub" id="w-extra" style="margin-top:4px;opacity:.6;"></div>
+      </div>
+      <div class="widget-card" onclick="openOnlineModal()">
+        <div class="widget-label">online now</div>
+        <div class="widget-main"><span class="online-dot"></span><span id="online-count">...</span></div>
+        <div class="widget-sub" id="online-sub">connecting</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" style="display:none;" onclick="closeModal(event)">
+    <div class="modal-box" id="modal-box">
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // ── CURSOR (fixed: use margin offset so tip is accurate) ──
+    const cur = document.getElementById('cursor');
+    const ring = document.getElementById('cursor-ring');
+    const CUR_R = 6, RING_R = 19; // half-sizes
+    let mx = innerWidth/2, my = innerHeight/2;
+    let smx = mx, smy = my;
+    let rafId;
+
+    window.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      cur.style.left = (mx - CUR_R) + 'px';
+      cur.style.top  = (my - CUR_R) + 'px';
+    }, {passive:true});
+
+    function curBig() { cur.classList.add('big'); ring.classList.add('big'); }
+    function curNorm(){ cur.classList.remove('big'); ring.classList.remove('big'); }
+
+    // BG
+    const bgC = document.getElementById('bg'), bgX = bgC.getContext('2d');
+    const scC = document.getElementById('stars'), scX = scC.getContext('2d');
+    function resize(){ bgC.width=scC.width=innerWidth; bgC.height=scC.height=innerHeight; }
+    resize(); window.addEventListener('resize',resize,{passive:true});
+
+    const orbs=[
+      {x:.52,y:.42,r:.42,cr:[80,16,195],op:.16,sp:.17,ox:.07,oy:.05,ph:0},
+      {x:.22,y:.62,r:.32,cr:[55,0,145],op:.16,sp:.23,ox:.08,oy:.06,ph:1.9},
+      {x:.80,y:.22,r:.26,cr:[120,40,215],op:.16,sp:.19,ox:.06,oy:.07,ph:3.6},
+      {x:.10,y:.18,r:.20,cr:[40,0,110],op:.15,sp:.14,ox:.04,oy:.04,ph:5.2},
+      {x:.72,y:.78,r:.18,cr:[100,20,180],op:.14,sp:.21,ox:.05,oy:.04,ph:2.4},
+    ];
+    const starArr = Array.from({length:90},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.3+.2,a:Math.random()*.5+.06,sp:Math.random()*.0018+.0005,ph:Math.random()*Math.PI*2}));
+    let t=0,fc=0;
+
+    function drawBg(){
+      const w=bgC.width,h=bgC.height;
+      bgX.fillStyle='#1f004d'; bgX.fillRect(0,0,w,h);
+      for(const o of orbs){
+        const rx=(smx/w-.5)*.08,ry=(smy/h-.5)*.08;
+        const cx=(o.x+Math.sin(t*o.sp+o.ph)*o.ox+rx)*w;
+        const cy=(o.y+Math.cos(t*o.sp+o.ph+1)*o.oy+ry)*h;
+        const rad=o.r*Math.min(w,h);
+        const g=bgX.createRadialGradient(cx,cy,0,cx,cy,rad);
+        g.addColorStop(0,`rgba(${o.cr.join(',')},${o.op})`);
+        g.addColorStop(.45,`rgba(${o.cr.join(',')},${ (o.op*.35).toFixed(3)})`);
+        g.addColorStop(1,`rgba(${o.cr.join(',')},0)`);
+        bgX.beginPath(); bgX.arc(cx,cy,rad,0,Math.PI*2); bgX.fillStyle=g; bgX.fill();
+      }
+      const cg=bgX.createRadialGradient(smx,smy,0,smx,smy,170);
+      cg.addColorStop(0,'rgba(180,80,255,.065)'); cg.addColorStop(1,'rgba(180,80,255,0)');
+      bgX.beginPath(); bgX.arc(smx,smy,170,0,Math.PI*2); bgX.fillStyle=cg; bgX.fill();
+    }
+    function drawStars(){
+      scX.clearRect(0,0,scC.width,scC.height);
+      for(const s of starArr){
+        const p=s.a+Math.sin(t*s.sp*5000+s.ph)*.12;
+        scX.beginPath(); scX.arc(s.x*scC.width,s.y*scC.height,s.r,0,Math.PI*2);
+        scX.fillStyle=`rgba(210,178,255,${Math.max(0,Math.min(1,p))})`; scX.fill();
+      }
+    }
+    function loop(ts){
+      t=ts*.001; fc++;
+      smx+=(mx-smx)*.06; smy+=(my-smy)*.06;
+      ring.style.left=(smx-RING_R)+'px'; ring.style.top=(smy-RING_R)+'px';
+      drawBg();
+      if(fc%2===0) drawStars();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // hover effects on interactive elements
+    function addHoverCursor(sel){ document.querySelectorAll(sel).forEach(el=>{ el.addEventListener('mouseenter',curBig); el.addEventListener('mouseleave',curNorm); }); }
+    addHoverCursor('.name-btn,.name-skip,.enter-btn,.widget-card,.modal-close,.modal-refresh');
+
+    // NAME SCREEN
+    const nameInput=document.getElementById('name-input');
+    const nameGreeting=document.getElementById('name-greeting');
+    let typingTimer;
+    nameInput.addEventListener('input',()=>{
+      clearTimeout(typingTimer);
+      const val=nameInput.value.trim();
+      if(!val){nameGreeting.textContent='';return;}
+      typingTimer=setTimeout(()=>{
+        const h=new Date().getHours();
+        const tod=h<12?'morning':h<17?'afternoon':h<21?'evening':'night';
+        nameGreeting.textContent='good '+tod+', '+val.toLowerCase()+'.';
+      },350);
+    });
+    nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')submitName();});
+
+    function submitName(skip){
+      const val=skip?'':nameInput.value.trim();
+      if(val) localStorage.setItem('radUsername',val);
+      const screen=document.getElementById('name-screen');
+      screen.classList.add('out');
+      setTimeout(()=>{
+        screen.style.display='none';
+        const main=document.getElementById('main-center');
+        main.style.opacity='1';
+        if(val){
+          const h=new Date().getHours();
+          const tod=h<12?'morning':h<17?'afternoon':h<21?'evening':'night';
+          document.getElementById('main-subtitle').textContent='good '+tod+', '+val.toLowerCase()+'.';
+        }
+      },500);
+    }
+
+    window.addEventListener('DOMContentLoaded',()=>{
+      const saved=localStorage.getItem('radUsername');
+      if(saved){
+        document.getElementById('name-screen').style.display='none';
+        document.getElementById('main-center').style.opacity='1';
+        const h=new Date().getHours();
+        const tod=h<12?'morning':h<17?'afternoon':h<21?'evening':'night';
+        document.getElementById('main-subtitle').textContent='good '+tod+', '+saved.toLowerCase()+'.';
+      } else {
+        setTimeout(()=>nameInput.focus(),100);
+      }
+    });
+
+    function goToHub(){
+      const ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#1f004d;opacity:0;transition:opacity .4s ease;pointer-events:all;';
+      document.body.appendChild(ov);
+      requestAnimationFrame(()=>{
+        ov.style.opacity='1';
+        setTimeout(()=>window.location.href='hub.html',420);
+      });
+    }
+
+    // MODALS
+    let _weatherData=null,_onlineUsers=[];
+    function openModal(){const bd=document.getElementById('modal-backdrop');bd.classList.remove('hiding');bd.style.display='flex';}
+    function closeModal(e){if(e&&e.target!==document.getElementById('modal-backdrop'))return;closeModalDirect();}
+    function closeModalDirect(){
+      const bd=document.getElementById('modal-backdrop');
+      bd.classList.add('hiding');
+      setTimeout(()=>{bd.style.display='none';bd.classList.remove('hiding');},220);
+    }
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModalDirect();});
+
+    function openWeatherModal(){
+      const d=_weatherData;
+      const ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('modal-content').innerHTML=`
+        <div class="modal-title">weather details</div>
+        <div class="modal-big">${d?d.icon+' '+d.tempF+'°F':'--°F'}</div>
+        <div style="font-size:13px;color:rgba(196,158,255,.55);margin-bottom:20px;">${d?d.cond:'loading...'}</div>
+        <div class="modal-row"><span class="modal-row-label">feels like</span><span class="modal-row-val">${d?d.feelsF+'°F':'--'}</span></div>
+        <div class="modal-row"><span class="modal-row-label">humidity</span><span class="modal-row-val">${d?d.humidity+'%':'--'}</span></div>
+        <div class="modal-row"><span class="modal-row-label">rain chance</span><span class="modal-row-val">${d?d.precip+'%':'--'}</span></div>
+        <div class="modal-row"><span class="modal-row-label">location</span><span class="modal-row-val" style="font-size:12px;">${d?d.loc||'Houston, TX':'--'}</span></div>
+        <div class="modal-row"><span class="modal-row-label">updated</span><span class="modal-row-val" style="font-size:12px;">${ts}</span></div>
+        <button class="modal-refresh" onclick="refreshWeather()">↺ refresh weather</button>`;
+      openModal();
+    }
+    function openOnlineModal(){
+      const now=Date.now();
+      const listHtml=_onlineUsers.length===0?'<div style="font-size:13px;color:rgba(196,158,255,.3);padding:12px 0;">no one here yet</div>'
+        :_onlineUsers.slice(0,12).map(u=>{
+          const sec=Math.floor((now-u.ts)/1000);
+          const ago=sec<60?sec+'s ago':Math.floor(sec/60)+'m ago';
+          return`<div class="online-user-row"><div class="online-user-dot"></div><span>${u.username||'Guest'}</span><span class="online-user-time">${ago}</span></div>`;
+        }).join('');
+      document.getElementById('modal-content').innerHTML=`
+        <div class="modal-title">who's online</div>
+        <div class="modal-big"><span style="color:#3cff9a;">${_onlineUsers.length}</span></div>
+        <div style="font-size:13px;color:rgba(196,158,255,.5);margin-bottom:20px;">${_onlineUsers.length===1?'person here':'people here'}</div>
+        <div style="max-height:220px;overflow-y:auto;scrollbar-width:none;">${listHtml}</div>`;
+      openModal();
+    }
+    function refreshWeather(){localStorage.removeItem('radWeatherTs');localStorage.removeItem('radWeatherData');closeModalDirect();loadWeather();}
+  </script>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script>
+    try{firebase.initializeApp({apiKey:"AIzaSyChqpSNRAXDCV9TfjNFxKun2DmPDA_1LTs",authDomain:"oozecrib.firebaseapp.com",databaseURL:"https://oozecrib-default-rtdb.firebaseio.com",projectId:"oozecrib",storageBucket:"oozecrib.firebasestorage.app",messagingSenderId:"234391927329",appId:"1:234391927329:web:87bfc502802643970d4160"});}catch(e){}
+    const db=firebase.database();
+
+    db.ref('online').on('value',snap=>{
+      const now=Date.now(); _onlineUsers=[];
+      if(snap.exists()) snap.forEach(ch=>{const v=ch.val();if(v&&v.ts&&now-v.ts<120000)_onlineUsers.push(v);});
+      _onlineUsers.sort((a,b)=>b.ts-a.ts);
+      const c=_onlineUsers.length;
+      document.getElementById('online-count').textContent=c;
+      document.getElementById('online-sub').textContent=c===1?'person here':'people here';
+    });
+
+    (function(){
+      const name=localStorage.getItem('radUsername')||'Guest';
+      const uid=localStorage.getItem('radUID')||(()=>{const id=Math.random().toString(36).slice(2);localStorage.setItem('radUID',id);return id;})();
+      const ref=db.ref('online/'+uid);
+      function ping(){ref.set({username:name,ts:Date.now(),page:'index'});}
+      ping(); setInterval(ping,30000); ref.onDisconnect().remove();
+    })();
+
+    window.loadWeather=async function(){
+      const cacheTs=parseInt(localStorage.getItem('radWeatherTs')||'0');
+      if(Date.now()-cacheTs<900000){
+        const cached=JSON.parse(localStorage.getItem('radWeatherData')||'null');
+        if(cached){_weatherData=cached;renderWeather(cached);return;}
+      }
+      async function fetchW(lat,lon,loc){
+        const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,rain,snowfall,apparent_temperature,relative_humidity_2m&timezone=auto&forecast_days=1`);
+        const data=await r.json();
+        const h=data.hourly,hr=new Date().getHours();
+        const tempF=Math.round(h.temperature_2m[hr]*9/5+32);
+        const feelsF=Math.round(h.apparent_temperature[hr]*9/5+32);
+        const precip=h.precipitation_probability[hr];
+        const humidity=h.relative_humidity_2m[hr];
+        const snow=h.snowfall[hr],rain=h.rain[hr];
+        const icon=snow>0?'❄️':rain>0?'🌧️':precip>60?'🌦️':precip>25?'⛅':(hr>=6&&hr<20)?'☀️':'🌙';
+        const cond=snow>0?'Snowing':rain>0?'Rainy':precip>60?'Likely Rain':precip>25?'Partly Cloudy':(hr>=6&&hr<20)?'Clear':'Clear Night';
+        return{tempF,feelsF,precip,humidity,icon,cond,loc};
+      }
+      try{
+        let d;
+        if(navigator.geolocation){
+          d=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(
+            p=>fetchW(p.coords.latitude,p.coords.longitude,'Your Location').then(res).catch(rej),
+            ()=>fetchW(29.84678,-95.661693,'Houston, TX').then(res).catch(rej),
+            {timeout:5000}
+          ));
+        } else { d=await fetchW(29.84678,-95.661693,'Houston, TX'); }
+        _weatherData=d;
+        localStorage.setItem('radWeatherData',JSON.stringify(d));
+        localStorage.setItem('radWeatherTs',Date.now().toString());
+        renderWeather(d);
+      }catch(e){document.getElementById('w-cond').textContent='unavailable';}
+    };
+    loadWeather();
+    function renderWeather(d){
+      document.getElementById('w-temp').textContent=d.icon+' '+d.tempF+'°F';
+      document.getElementById('w-cond').textContent=d.cond+' · feels '+d.feelsF+'°F';
+      document.getElementById('w-extra').textContent='💧 '+d.humidity+'%  🌧️ '+d.precip+'%';
+    }
+  </script>
+</body>
+</html>

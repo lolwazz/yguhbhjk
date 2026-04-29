@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Radical Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:#1f004d;color:#e0d0ff;font-family:'Outfit',sans-serif;overflow:hidden;cursor:none;}
+#cursor{position:fixed;z-index:9999;pointer-events:none;width:12px;height:12px;border-radius:50%;background:rgba(196,158,255,.95);top:0;left:0;box-shadow:0 0 14px rgba(196,158,255,.8);}
+#cursor-ring{position:fixed;z-index:9998;pointer-events:none;width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(196,158,255,.3);top:0;left:0;transition:width .28s,height .28s;}
+canvas#bg{position:fixed;inset:0;z-index:0;}
+
+.app{position:relative;z-index:10;display:flex;height:100vh;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:240px;background:rgba(10,0,28,.9);border-right:1px solid rgba(196,158,255,.1);display:flex;flex-direction:column;flex-shrink:0;}
+.sid-header{padding:14px 16px;border-bottom:1px solid rgba(196,158,255,.1);display:flex;align-items:center;justify-content:space-between;}
+.sid-title{font-size:14px;font-weight:800;color:#c49eff;}
+.sid-back{font-size:11px;color:rgba(196,158,255,.4);cursor:none;text-decoration:none;letter-spacing:1px;transition:color .2s;}
+.sid-back:hover{color:#c49eff;}
+.sid-section{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(196,158,255,.35);padding:14px 16px 6px;}
+.tab-btn{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:none;border-radius:8px;margin:2px 8px;transition:background .15s;color:rgba(196,158,255,.6);font-size:14px;font-weight:600;border:none;background:transparent;width:calc(100% - 16px);text-align:left;}
+.tab-btn:hover,.tab-btn.active{background:rgba(196,158,255,.12);color:#c49eff;}
+.tab-btn i{width:16px;text-align:center;font-size:13px;}
+.tab-badge{margin-left:auto;background:#ff3d3d;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;display:none;}
+.tab-badge.show{display:inline;}
+
+.sid-users{padding:4px;}
+.user-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;}
+.user-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.user-name{font-size:12px;font-weight:600;color:rgba(196,158,255,.65);}
+.online-mini{width:7px;height:7px;border-radius:50%;background:#3cff9a;flex-shrink:0;box-shadow:0 0 4px #3cff9a;}
+
+.sid-bottom{margin-top:auto;padding:10px;border-top:1px solid rgba(196,158,255,.1);display:flex;align-items:center;gap:8px;}
+.my-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7b2fff,#c49eff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;}
+.my-name{font-size:13px;font-weight:700;color:#c49eff;flex:1;}
+.my-status{font-size:11px;color:rgba(196,158,255,.4);}
+
+/* MAIN PANELS */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.panel{flex:1;display:none;flex-direction:column;overflow:hidden;}
+.panel.active{display:flex;}
+
+/* CHAT PANEL */
+.main-header{padding:11px 18px;border-bottom:1px solid rgba(196,158,255,.1);background:rgba(10,0,28,.55);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.main-header i{color:rgba(196,158,255,.5);font-size:15px;}
+.chan-name{font-size:15px;font-weight:700;color:#e0d0ff;}
+.chan-desc{font-size:12px;color:rgba(196,158,255,.4);margin-left:4px;}
+.header-btns{margin-left:auto;display:flex;gap:8px;}
+.hbtn{background:rgba(196,158,255,.08);border:1px solid rgba(196,158,255,.16);color:rgba(196,158,255,.6);font-size:11px;padding:5px 11px;border-radius:8px;cursor:none;font-family:'Outfit',sans-serif;font-weight:600;transition:all .2s;}
+.hbtn:hover{background:rgba(196,158,255,.18);color:#c49eff;}
+.hbtn.active{border-color:rgba(60,255,154,.4);color:#3cff9a;}
+
+/* CHANNEL TABS */
+.chan-tabs{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid rgba(196,158,255,.08);flex-shrink:0;}
+.chan-tab{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;color:rgba(196,158,255,.45);cursor:none;border:none;background:transparent;transition:all .2s;}
+.chan-tab:hover,.chan-tab.active{background:rgba(196,158,255,.1);color:#c49eff;}
+
+.messages{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:rgba(196,158,255,.15) transparent;}
+.msg-group{display:flex;gap:10px;padding:3px 0;margin-top:4px;}
+.msg-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;align-self:flex-start;}
+.msg-body{flex:1;}
+.msg-meta{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;}
+.msg-author{font-size:14px;font-weight:700;color:#c49eff;}
+.msg-time{font-size:11px;color:rgba(196,158,255,.3);}
+.msg-text{font-size:14px;color:rgba(224,208,255,.85);line-height:1.55;word-break:break-word;}
+.mention{display:inline-block;padding:1px 6px;background:rgba(123,47,255,.25);border-radius:4px;color:#c49eff;font-weight:700;font-size:13px;}
+.mention-me{background:rgba(255,215,0,.25);color:#ffd700;animation:mentionPulse 1.5s ease-in-out infinite;}
+@keyframes mentionPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.4);}50%{box-shadow:0 0 0 4px rgba(255,215,0,0);}}
+.msg-mentioned{background:linear-gradient(90deg,rgba(255,215,0,.08),transparent);border-left:3px solid #ffd700;padding-left:8px;border-radius:6px;}
+.cemoji{display:inline-block;width:22px;height:22px;vertical-align:middle;margin:-2px 1px 0;object-fit:contain;}
+.msg-text .cemoji{width:24px;height:24px;}
+/* Bigger emoji-only messages */
+.msg-text.only-emoji .cemoji{width:48px;height:48px;}
+
+/* Emoji picker */
+#emoji-picker{position:fixed;bottom:80px;right:14px;width:320px;max-height:380px;background:rgba(14,2,36,.98);backdrop-filter:blur(20px);border:1px solid rgba(196,158,255,.3);border-radius:14px;padding:12px;z-index:200;display:none;box-shadow:0 16px 50px rgba(0,0,0,.6);}
+#emoji-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-height:280px;overflow-y:auto;}
+.emoji-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:8px;cursor:pointer;font-size:20px;transition:background .12s;}
+.emoji-btn:hover{background:rgba(196,158,255,.18);}
+.msg-tts{margin-left:4px;background:none;border:none;color:rgba(196,158,255,.3);cursor:none;font-size:13px;transition:color .2s;}
+.msg-tts:hover{color:#c49eff;}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.msg-new{animation:msgIn .22s ease;}
+.system-msg{text-align:center;font-size:12px;color:rgba(196,158,255,.3);padding:6px 0;font-style:italic;}
+
+/* INPUT */
+.input-area{padding:10px 18px;background:rgba(10,0,28,.35);border-top:1px solid rgba(196,158,255,.08);flex-shrink:0;}
+.input-wrap{background:rgba(196,158,255,.07);border:1px solid rgba(196,158,255,.15);border-radius:12px;display:flex;align-items:flex-end;gap:6px;padding:8px 12px;transition:border-color .2s;}
+.input-wrap:focus-within{border-color:rgba(196,158,255,.38);}
+#msg-input{flex:1;background:transparent;border:none;outline:none;color:#e0d0ff;font-family:'Outfit',sans-serif;font-size:14px;resize:none;max-height:100px;min-height:24px;line-height:1.5;cursor:text;}
+#msg-input::placeholder{color:rgba(196,158,255,.3);}
+.input-btns{display:flex;gap:5px;flex-shrink:0;}
+.ibtn{background:transparent;border:none;color:rgba(196,158,255,.4);font-size:15px;cursor:none;padding:3px;transition:color .2s;}
+.ibtn:hover{color:#c49eff;}
+.send-btn{background:rgba(196,158,255,.15);border:1px solid rgba(196,158,255,.3);border-radius:8px;color:#c49eff;font-size:13px;cursor:none;padding:5px 11px;transition:all .2s;}
+.send-btn:hover{background:rgba(196,158,255,.28);}
+
+/* AI PANEL */
+.ai-header{padding:11px 18px;border-bottom:1px solid rgba(196,158,255,.1);background:rgba(10,0,28,.55);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.ai-badge{font-size:10px;font-weight:800;letter-spacing:2px;color:#3cff9a;border:1px solid rgba(60,255,154,.3);border-radius:6px;padding:2px 8px;flex-shrink:0;}
+.ai-sel{margin-left:auto;background:rgba(196,158,255,.08);border:1px solid rgba(196,158,255,.2);color:#e0d0ff;font-size:11px;font-weight:600;padding:5px 8px;border-radius:7px;outline:none;cursor:pointer;font-family:'Outfit',sans-serif;max-width:160px;}
+.ai-sel:hover{border-color:rgba(196,158,255,.5);background:rgba(196,158,255,.15);}
+.ai-sel + .ai-sel{margin-left:0;}
+.ai-set-btn{background:rgba(196,158,255,.08);border:1px solid rgba(196,158,255,.2);color:#c49eff;width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.ai-set-btn:hover{background:rgba(196,158,255,.2);border-color:rgba(196,158,255,.5);}
+
+/* AI SETTINGS MODAL */
+#ai-settings-modal{position:fixed;inset:0;background:rgba(0,0,0,.86);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;z-index:2000;}
+#ai-settings-modal.show{display:flex;}
+.ais-box{background:rgba(14,2,36,.98);border:1px solid rgba(196,158,255,.22);border-radius:18px;padding:26px;width:min(460px,92vw);animation:aisIn .3s cubic-bezier(.22,1,.36,1);}
+@keyframes aisIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:none;}}
+.ais-title{font-size:17px;font-weight:800;color:#fff;margin-bottom:5px;}
+.ais-sub{font-size:11px;font-family:'Syne Mono',monospace;color:rgba(196,158,255,.55);letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;}
+.ais-label{font-size:10px;letter-spacing:1.8px;color:rgba(196,158,255,.55);text-transform:uppercase;margin-bottom:6px;font-family:'Syne Mono',monospace;}
+.ais-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(196,158,255,.18);background:rgba(196,158,255,.05);color:#e0d0ff;font-family:'Outfit',monospace;font-size:12px;outline:none;margin-bottom:14px;font-family:monospace;}
+.ais-input:focus{border-color:rgba(196,158,255,.55);}
+.ais-info{font-size:11px;color:rgba(196,158,255,.55);line-height:1.5;margin-bottom:16px;background:rgba(123,47,255,.08);padding:11px 13px;border-radius:9px;border-left:2px solid rgba(196,158,255,.4);}
+.ais-info a{color:#c49eff;text-decoration:underline;}
+.ais-warn{font-size:11px;color:#ffaa44;line-height:1.5;margin-bottom:16px;background:rgba(255,170,68,.08);padding:11px 13px;border-radius:9px;border-left:2px solid rgba(255,170,68,.5);}
+.ais-btns{display:flex;gap:8px;}
+.ais-btn{flex:1;padding:10px;background:rgba(196,158,255,.16);border:1px solid rgba(196,158,255,.35);border-radius:10px;color:#c49eff;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:'Outfit',sans-serif;}
+.ais-btn:hover{background:rgba(196,158,255,.28);}
+.ais-btn.ghost{background:transparent;color:rgba(196,158,255,.6);border-color:rgba(196,158,255,.18);}
+.ais-btn.danger{background:transparent;color:rgba(255,107,107,.7);border-color:rgba(255,107,107,.3);}
+.ais-btn.danger:hover{background:rgba(255,80,80,.12);color:#ff6b6b;}
+.ai-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin;scrollbar-color:rgba(196,158,255,.15) transparent;}
+.ai-msg{display:flex;gap:12px;max-width:85%;}
+.ai-msg.user{align-self:flex-end;flex-direction:row-reverse;}
+.ai-msg.assistant{align-self:flex-start;}
+.ai-bubble{padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.6;}
+.ai-msg.user .ai-bubble{background:rgba(196,158,255,.15);border:1px solid rgba(196,158,255,.25);border-radius:16px 4px 16px 16px;color:#e8d4ff;}
+.ai-msg.assistant .ai-bubble{background:rgba(30,8,70,.8);border:1px solid rgba(196,158,255,.18);border-radius:4px 16px 16px 16px;color:#e0d0ff;}
+.ai-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;align-self:flex-end;}
+.ai-msg.user .ai-avatar{background:linear-gradient(135deg,#7b2fff,#c49eff);}
+.ai-msg.assistant .ai-avatar{background:linear-gradient(135deg,#1a0040,#7b2fff);font-size:18px;}
+.ai-typing{display:flex;gap:5px;align-items:center;padding:14px 16px;}
+.ai-dot{width:7px;height:7px;border-radius:50%;background:#c49eff;animation:aiDot 1.2s ease-in-out infinite;}
+.ai-dot:nth-child(2){animation-delay:.2s;}
+.ai-dot:nth-child(3){animation-delay:.4s;}
+@keyframes aiDot{0%,100%{opacity:.3;transform:scale(.7);}50%{opacity:1;transform:scale(1);}}
+.ai-input-wrap{padding:12px 18px;border-top:1px solid rgba(196,158,255,.08);background:rgba(10,0,28,.35);flex-shrink:0;}
+.ai-input-row{display:flex;gap:8px;}
+#ai-input{flex:1;padding:11px 16px;border-radius:12px;border:1px solid rgba(196,158,255,.2);background:rgba(196,158,255,.07);color:#e0d0ff;font-family:'Outfit',sans-serif;font-size:14px;outline:none;cursor:text;transition:border-color .2s;}
+#ai-input:focus{border-color:rgba(196,158,255,.45);}
+#ai-input::placeholder{color:rgba(196,158,255,.3);}
+.ai-send{padding:11px 18px;background:rgba(196,158,255,.15);border:1px solid rgba(196,158,255,.35);border-radius:12px;color:#c49eff;font-weight:700;cursor:none;font-family:'Outfit',sans-serif;transition:all .2s;font-size:14px;}
+.ai-send:hover{background:rgba(196,158,255,.28);}
+.ai-tts-btn{padding:11px 14px;background:rgba(60,255,154,.08);border:1px solid rgba(60,255,154,.2);border-radius:12px;color:rgba(60,255,154,.7);cursor:none;font-size:14px;transition:all .2s;}
+.ai-tts-btn:hover,.ai-tts-btn.active{background:rgba(60,255,154,.15);color:#3cff9a;border-color:rgba(60,255,154,.5);}
+.ai-cam-btn{padding:11px 14px;background:rgba(100,180,255,.08);border:1px solid rgba(100,180,255,.2);border-radius:12px;color:rgba(100,180,255,.7);cursor:none;font-size:14px;transition:all .2s;}
+.ai-cam-btn:hover,.ai-cam-btn.active{background:rgba(100,180,255,.15);color:#64b4ff;border-color:rgba(100,180,255,.5);}
+
+/* CAMERA PANEL */
+.cam-header{padding:11px 18px;border-bottom:1px solid rgba(196,158,255,.1);background:rgba(10,0,28,.55);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.cam-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;overflow:hidden;}
+.cam-preview{position:relative;border-radius:16px;overflow:hidden;border:2px solid rgba(196,158,255,.2);background:#000;max-height:55vh;aspect-ratio:16/9;width:100%;max-width:600px;}
+#cam-video{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(10,0,28,.8));padding:12px;display:flex;gap:8px;justify-content:center;}
+.cam-btn{padding:8px 16px;border-radius:10px;border:1px solid rgba(196,158,255,.25);background:rgba(10,0,28,.8);color:#c49eff;cursor:none;font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;transition:all .2s;}
+.cam-btn:hover{background:rgba(196,158,255,.18);border-color:rgba(196,158,255,.5);}
+.cam-btn.danger{border-color:rgba(255,80,80,.3);color:rgba(255,120,120,.8);}
+.cam-btn.danger:hover{background:rgba(255,80,80,.12);}
+.cam-chat-box{width:100%;max-width:600px;display:flex;flex-direction:column;gap:8px;}
+.cam-chat-history{max-height:120px;overflow-y:auto;padding:8px;background:rgba(196,158,255,.04);border:1px solid rgba(196,158,255,.12);border-radius:10px;scrollbar-width:thin;}
+.cam-msg{font-size:13px;color:rgba(196,158,255,.8);line-height:1.5;margin-bottom:4px;}
+.cam-msg.ai{color:#e0d0ff;}
+.cam-msg span{font-weight:700;}
+.cam-input-row{display:flex;gap:8px;}
+#cam-input{flex:1;padding:10px 14px;border-radius:10px;border:1px solid rgba(196,158,255,.2);background:rgba(196,158,255,.07);color:#e0d0ff;font-family:'Outfit',sans-serif;font-size:13px;outline:none;cursor:text;transition:border-color .2s;}
+#cam-input::placeholder{color:rgba(196,158,255,.3);}
+#cam-input:focus{border-color:rgba(196,158,255,.4);}
+.cam-send{padding:10px 16px;background:rgba(196,158,255,.12);border:1px solid rgba(196,158,255,.3);border-radius:10px;color:#c49eff;font-weight:700;cursor:none;font-family:'Outfit',sans-serif;font-size:12px;transition:all .2s;}
+.cam-send:hover{background:rgba(196,158,255,.25);}
+.cam-status{font-size:12px;color:rgba(196,158,255,.45);font-family:'Syne Mono',monospace;letter-spacing:1px;}
+.cam-start-btn{padding:14px 32px;border-radius:14px;border:1px solid rgba(196,158,255,.3);background:rgba(196,158,255,.1);color:#c49eff;font-size:16px;font-weight:700;cursor:none;font-family:'Outfit',sans-serif;transition:all .2s;}
+.cam-start-btn:hover{background:rgba(196,158,255,.2);border-color:rgba(196,158,255,.55);}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg"></canvas>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sid-header">
+      <div class="sid-title">radical chat</div>
+      <a href="hub.html" class="sid-back">← hub</a>
+    </div>
+    <div class="sid-section">Tabs</div>
+    <button class="tab-btn active" id="tab-chat-btn" onclick="switchTab('chat')"><i class="fa-solid fa-hashtag"></i> live chat <span class="tab-badge" id="badge-chat">0</span></button>
+    <button class="tab-btn" id="tab-ai-btn" onclick="switchTab('ai')"><i class="fa-solid fa-robot"></i> radical ai <span style="font-size:10px;color:#3cff9a;margin-left:4px;">✦ new</span></button>
+    <button class="tab-btn" id="tab-cam-btn" onclick="switchTab('cam')"><i class="fa-solid fa-camera"></i> camera chat</button>
+
+    <div class="sid-section">Live Chat Channels</div>
+    <button class="tab-btn" id="chan-general" onclick="switchChannel('general')"><i class="fa-solid fa-hashtag" style="font-size:10px;"></i> general</button>
+    <button class="tab-btn" id="chan-games" onclick="switchChannel('games')"><i class="fa-solid fa-hashtag" style="font-size:10px;"></i> games</button>
+    <button class="tab-btn" id="chan-music" onclick="switchChannel('music')"><i class="fa-solid fa-hashtag" style="font-size:10px;"></i> music</button>
+    <button class="tab-btn" id="chan-random" onclick="switchChannel('random')"><i class="fa-solid fa-hashtag" style="font-size:10px;"></i> random</button>
+
+    <div class="sid-section">Online — <span id="online-count">0</span></div>
+    <div id="online-users"></div>
+
+    <div class="sid-bottom">
+      <div class="my-avatar" id="my-avatar">?</div>
+      <div><div class="my-name" id="my-name">Guest</div><div class="my-status">online</div></div>
+    </div>
+  </div>
+
+  <!-- LIVE CHAT PANEL -->
+  <div class="panel active" id="panel-chat">
+    <div class="main-header">
+      <i class="fa-solid fa-hashtag"></i>
+      <span class="chan-name" id="chan-name">general</span>
+      <span class="chan-desc" id="chan-desc">— hang out here</span>
+      <div class="header-btns">
+        <button class="hbtn" id="tts-toggle-btn" onclick="toggleChatTTS()"><i class="fa-solid fa-volume-high"></i> TTS off</button>
+      </div>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="msg-input" rows="1" placeholder="Message #general..." oninput="autoResize(this)"></textarea>
+        <div class="input-btns">
+          <button class="ibtn" onclick="insertEmoji()" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
+          <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI PANEL -->
+  <div class="panel" id="panel-ai">
+    <div class="ai-header">
+      <i class="fa-solid fa-robot" style="color:#c49eff;font-size:16px;"></i>
+      <span style="font-size:15px;font-weight:700;color:#e0d0ff;">Radical AI</span>
+      <div class="ai-badge" id="ai-badge">OPENROUTER</div>
+      <select id="ai-model-sel" class="ai-sel" onchange="onAIModelChange()">
+        <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+        <option value="openai/gpt-4o">GPT-4o</option>
+        <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+        <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (free)</option>
+        <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option>
+        <option value="deepseek/deepseek-chat">DeepSeek</option>
+        <option value="x-ai/grok-2-1212">Grok 2</option>
+      </select>
+      <select id="ai-personality" class="ai-sel" onchange="onPersonalityChange()" title="Personality">
+        <option value="chill">😎 Chill</option>
+        <option value="brutal">🧊 Brutally Honest</option>
+        <option value="hype">🔥 Hype</option>
+        <option value="pirate">🏴‍☠️ Pirate</option>
+        <option value="yoda">🟢 Yoda</option>
+        <option value="shakespeare">🪶 Shakespeare</option>
+        <option value="surfer">🏄 Surfer</option>
+        <option value="goth">🖤 Goth</option>
+        <option value="professor">🎓 Professor</option>
+      </select>
+      <button class="ai-set-btn" onclick="openAISettings()" title="API key settings"><i class="fa-solid fa-key"></i></button>
+    </div>
+    <div class="ai-messages" id="ai-messages">
+      <div class="ai-msg assistant">
+        <div class="ai-avatar">✦</div>
+        <div class="ai-bubble" id="ai-welcome">yo! i'm Radical AI. pick a model and personality up top, then ask me anything 💜</div>
+      </div>
+    </div>
+    <div class="ai-input-wrap">
+      <div class="ai-input-row">
+        <input id="ai-input" type="text" placeholder="Ask me anything..." autocomplete="off"/>
+        <button class="ai-tts-btn" id="ai-tts-btn" onclick="toggleAITTS()" title="Text-to-speech"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="ai-cam-btn" id="ai-cam-btn" onclick="switchTab('cam')" title="Camera chat"><i class="fa-solid fa-camera"></i></button>
+        <button class="ai-send" onclick="sendAIMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMERA PANEL -->
+  <div class="panel" id="panel-cam">
+    <div class="cam-header">
+      <i class="fa-solid fa-camera" style="color:#64b4ff;font-size:16px;"></i>
+      <span style="font-size:15px;font-weight:700;color:#e0d0ff;">Camera Chat</span>
+      <span style="font-size:12px;color:rgba(196,158,255,.4);margin-left:8px;">AI sees you in real time</span>
+    </div>
+    <div class="cam-body" id="cam-body">
+      <!-- Start screen -->
+      <div id="cam-start" style="display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;">
+        <div style="font-size:3rem;">📷</div>
+        <div style="font-size:18px;font-weight:700;color:#e8d4ff;">Enable camera to chat with AI</div>
+        <div style="font-size:13px;color:rgba(196,158,255,.5);max-width:320px;">The AI will see your camera feed and can describe what it sees, answer questions about it, or just vibe with you.</div>
+        <button class="cam-start-btn" onclick="startCamera()"><i class="fa-solid fa-camera"></i> Start Camera</button>
+      </div>
+      <!-- Active camera -->
+      <div id="cam-active" style="display:none;width:100%;max-width:600px;display:none;flex-direction:column;align-items:center;gap:12px;">
+        <div class="cam-preview">
+          <video id="cam-video" autoplay playsinline muted></video>
+          <div class="cam-overlay">
+            <button class="cam-btn" onclick="snapAndAsk()"><i class="fa-solid fa-eye"></i> Ask AI what it sees</button>
+            <button class="cam-btn danger" onclick="stopCamera()"><i class="fa-solid fa-video-slash"></i> Stop</button>
+          </div>
+        </div>
+        <div class="cam-status" id="cam-status">camera active — AI ready</div>
+        <div class="cam-chat-box">
+          <div class="cam-chat-history" id="cam-history"></div>
+          <div class="cam-input-row">
+            <input id="cam-input" type="text" placeholder="Ask about what the camera sees..."/>
+            <button class="cam-send" onclick="camSend()">Ask</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI SETTINGS MODAL -->
+<div id="ai-settings-modal" onclick="if(event.target===this)closeAISettings()">
+  <div class="ais-box">
+    <div class="ais-title">🔑 AI Settings</div>
+    <div class="ais-sub">openrouter API key</div>
+    <div class="ais-info">
+      Get a free OpenRouter API key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>. Free models work without credits — paid ones need ~$1+ on your account.
+    </div>
+    <div class="ais-warn">
+      ⚠️ Your key is saved on this device only (localStorage). Never share it. If you suspect it's leaked, rotate it immediately at openrouter.ai/keys.
+    </div>
+    <div class="ais-label">OpenRouter API Key</div>
+    <input type="password" id="ais-key-input" class="ais-input" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false">
+    <div class="ais-btns">
+      <button class="ais-btn ghost" onclick="closeAISettings()">Cancel</button>
+      <button class="ais-btn danger" onclick="clearAIKey()">Clear Key</button>
+      <button class="ais-btn" onclick="saveAIKey()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+  // ═══════════════════════════════════════════════════════════
+  // ▼▼▼  PASTE YOUR OPENROUTER API KEY ON THE LINE BELOW  ▼▼▼
+  // ═══════════════════════════════════════════════════════════
+  // Get a free one at https://openrouter.ai/keys
+  // If you previously leaked a key, DELETE it from openrouter and make a new one first.
+  const HARDCODED_OPENROUTER_KEY = "";  // <-- paste here, between the quotes
+  // ═══════════════════════════════════════════════════════════
+
+  // ── CURSOR ──
+  const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+  const CUR_R=6,RING_R=19;
+  let mx=innerWidth/2,my=innerHeight/2,smx=mx,smy=my;
+  window.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=(mx-CUR_R)+'px';cur.style.top=(my-CUR_R)+'px';},{passive:true});
+  function cBig(){ring.style.width='50px';ring.style.height='50px';}
+  function cNorm(){ring.style.width='38px';ring.style.height='38px';}
+  document.querySelectorAll('button,a,.tab-btn').forEach(el=>{el.addEventListener('mouseenter',cBig);el.addEventListener('mouseleave',cNorm);});
+  function loop(){smx+=(mx-smx)*.06;smy+=(my-smy)*.06;ring.style.left=(smx-RING_R)+'px';ring.style.top=(smy-RING_R)+'px';requestAnimationFrame(loop);}loop();
+
+  // BG
+  const bgC=document.getElementById('bg'),bgX=bgC.getContext('2d');
+  function resize(){bgC.width=innerWidth;bgC.height=innerHeight;}resize();
+  window.addEventListener('resize',resize,{passive:true});
+  const orbs=[{x:.52,y:.42,r:.42,cr:[80,16,195],op:.12,sp:.17,ox:.07,oy:.05,ph:0},{x:.22,y:.62,r:.28,cr:[55,0,145],op:.12,sp:.23,ox:.08,oy:.06,ph:1.9},{x:.8,y:.22,r:.22,cr:[120,40,215],op:.11,sp:.19,ox:.06,oy:.07,ph:3.6}];
+  const starArr=Array.from({length:80},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.1+.2,a:Math.random()*.4+.05,sp:Math.random()*.0015+.0004,ph:Math.random()*Math.PI*2}));
+  let t=0,fc=0;
+  function drawBg(){const w=bgC.width,h=bgC.height;bgX.fillStyle='#1f004d';bgX.fillRect(0,0,w,h);for(const o of orbs){const cx=(o.x+Math.sin(t*o.sp+o.ph)*o.ox)*w,cy=(o.y+Math.cos(t*o.sp+o.ph+1)*o.oy)*h,rad=o.r*Math.min(w,h),g=bgX.createRadialGradient(cx,cy,0,cx,cy,rad);g.addColorStop(0,`rgba(${o.cr.join(',')},${o.op})`);g.addColorStop(1,`rgba(${o.cr.join(',')},0)`);bgX.beginPath();bgX.arc(cx,cy,rad,0,Math.PI*2);bgX.fillStyle=g;bgX.fill();}if(fc%2===0){for(const s of starArr){const p=s.a+Math.sin(t*s.sp*5000+s.ph)*.1;bgX.beginPath();bgX.arc(s.x*w,s.y*h,s.r,0,Math.PI*2);bgX.fillStyle=`rgba(210,178,255,${Math.max(0,Math.min(1,p))})`;bgX.fill();}}}
+  function bgLoop(ts){t=ts*.001;fc++;drawBg();requestAnimationFrame(bgLoop);}requestAnimationFrame(bgLoop);
+
+  // FIREBASE
+  try{firebase.initializeApp({apiKey:"AIzaSyChqpSNRAXDCV9TfjNFxKun2DmPDA_1LTs",authDomain:"oozecrib.firebaseapp.com",databaseURL:"https://oozecrib-default-rtdb.firebaseio.com",projectId:"oozecrib",storageBucket:"oozecrib.firebasestorage.app",messagingSenderId:"234391927329",appId:"1:234391927329:web:87bfc502802643970d4160"});}catch(e){}
+  const db=firebase.database();
+
+  // Resolve username from current profile (more accurate than radUsername alone)
+  function resolveUsername(){
+    try{
+      const profiles=JSON.parse(localStorage.getItem('radProfiles')||'[]');
+      const cur=localStorage.getItem('radCurrentProfile');
+      const me=profiles.find(p=>p.id===cur);
+      if(me&&me.name&&me.name.trim()&&me.name!=='undefined') return me.name.trim();
+    }catch(e){}
+    const u=localStorage.getItem('radUsername');
+    if(u&&u.trim()&&u!=='undefined') return u.trim();
+    return 'Guest'+Math.floor(Math.random()*9999);
+  }
+  const username=resolveUsername();
+  const uid=localStorage.getItem('radUID')||(()=>{const id=Math.random().toString(36).slice(2);localStorage.setItem('radUID',id);return id;})();
+  const avatarColors=['linear-gradient(135deg,#7b2fff,#c49eff)','linear-gradient(135deg,#ff6b9d,#ff3d3d)','linear-gradient(135deg,#3dffa0,#00c8ff)','linear-gradient(135deg,#ffd700,#ff8c00)'];
+  const myColor=avatarColors[uid.charCodeAt(0)%avatarColors.length];
+
+  document.getElementById('my-name').textContent=username;
+  document.getElementById('my-avatar').textContent=username[0].toUpperCase();
+  document.getElementById('my-avatar').style.background=myColor;
+  // Use PFP if available
+  try{
+    const profiles=JSON.parse(localStorage.getItem('radProfiles')||'[]');
+    const cur=localStorage.getItem('radCurrentProfile');
+    const me=profiles.find(p=>p.id===cur);
+    if(me&&me.pfp){
+      document.getElementById('my-avatar').innerHTML=`<img src="${me.pfp}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    }
+  }catch(e){}
+
+  // PRESENCE
+  const presRef=db.ref('chat_presence/'+uid);
+  presRef.set({username,uid,ts:Date.now()});presRef.onDisconnect().remove();
+  setInterval(()=>presRef.update({ts:Date.now()}),30000);
+  db.ref('chat_presence').on('value',snap=>{
+    const now=Date.now();const users=[];
+    snap.forEach(ch=>{const v=ch.val();if(v&&v.ts&&now-v.ts<90000)users.push(v);});
+    document.getElementById('online-count').textContent=users.length;
+    const ul=document.getElementById('online-users');
+    ul.innerHTML=users.slice(0,6).map(u=>`<div class="user-row"><div class="online-mini"></div><span class="user-name">${u.username}</span></div>`).join('');
+  });
+
+  // TABS
+  let currentTab='chat';
+  function switchTab(tab){
+    currentTab=tab;
+    ['chat','ai','cam'].forEach(t=>{
+      document.getElementById('panel-'+t).classList.toggle('active',t===tab);
+      document.getElementById('tab-'+t+'-btn').classList.toggle('active',t===tab);
+    });
+    // check for #ai in URL
+    if(tab==='ai') document.getElementById('ai-input').focus();
+  }
+  // Check URL hash on load
+  if(window.location.hash==='#ai') setTimeout(()=>switchTab('ai'),100);
+
+  // CHANNELS
+  let currentChannel='general';
+  const channelListeners={};
+  const CHANNEL_DESCS={general:'— hang out here',games:'— talk games',music:'— share music',random:'— anything goes'};
+
+  function switchChannel(ch){
+    if(currentTab!=='chat') switchTab('chat');
+    currentChannel=ch;
+    document.querySelectorAll('[id^="chan-"]').forEach(b=>b.classList.remove('active'));
+    document.getElementById('chan-'+ch).classList.add('active');
+    document.getElementById('chan-name').textContent=ch;
+    document.getElementById('chan-desc').textContent=CHANNEL_DESCS[ch]||'';
+    document.getElementById('msg-input').placeholder='Message #'+ch+'...';
+    loadMessages(ch);
+  }
+
+  function loadMessages(ch){
+    const el=document.getElementById('messages');el.innerHTML='';
+    if(channelListeners[ch])return;
+    channelListeners[ch]=true;
+    db.ref('radical_chat/'+ch).limitToLast(60).on('child_added',snap=>{
+      const m=snap.val();if(!m)return;
+      appendMessage(m,ch===currentChannel);
+    });
+  }
+
+  let chatTTS=false;
+  function toggleChatTTS(){
+    chatTTS=!chatTTS;
+    const btn=document.getElementById('tts-toggle-btn');
+    btn.innerHTML=chatTTS?'<i class="fa-solid fa-volume-high"></i> TTS on':'<i class="fa-solid fa-volume-high"></i> TTS off';
+    btn.classList.toggle('active',chatTTS);
+  }
+
+  function speak(text){
+    if(!window.speechSynthesis)return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=1;u.pitch=1;
+    window.speechSynthesis.speak(u);
+  }
+
+  // Custom emoji manifest — these are bundled in /emojis/
+  const CUSTOM_EMOJIS = ['18','99','Doggo_dance','Minecraft_Rainbow_Sheep','Neysi','NoU_Rainbow','SaitamaOk','TrollDance','Wow','_f_','aevy','agitato','AmericaPepega','among','amongbed','amongus','amongus_run','angry','angrycat','astrong','aware','baka','beam','bigbrain','bigthonk','blob','blobcat','blobcatlul','blue','boom','catflower','catflower2','catjam','catkiss','cattree','clown','confused','cop','cope','cope2','crazy','cri','dab','dance','despair','dial','doot','drink','eepy','egg','enraged','escape','eye','facepalm','fight','fishy','flop','foxfast','glitch','goose','gun','happy','hd','helga','hithere','hmm','huh','hyper','ice','jam','joy','kiss','laugh','laughcat','listen','lookat','luigi','marvel','mihowwer','milf','milky','milo','mistakes','money','monkey','moonduck','muscle','mw','nervous','nice','noah','noahangry','noahbig','noahsad','noahsmile','nyan','okay','party','peepo','pepe','pingu','pop','pog','rage','rich','run','sad','sigh','simping','sip','sleep','smug','snail','snap','sob','spin','squid','star','stare','stop','sus','swag','sweat','think','tired','triggered','wacky','wat','weary','wide','wink','yes','zoom'];
+  // Build emoji name->extension map
+  const EMOJI_EXTS = {'Doggo_dance':'gif','Minecraft_Rainbow_Sheep':'gif','NoU_Rainbow':'gif','TrollDance':'gif','Wow':'gif'};
+  function emojiUrl(name){
+    const ext = EMOJI_EXTS[name] || 'png';
+    return '../emojis/' + name + '.' + ext;
+  }
+
+  // Parse text for @mentions and :emoji:
+  function parseMessage(text){
+    let html = escHtml(text);
+    // @mentions
+    html = html.replace(/@(\w+)/g, (m,nm) => {
+      const isMe = nm.toLowerCase() === username.toLowerCase();
+      return `<span class="mention${isMe?' mention-me':''}">@${nm}</span>`;
+    });
+    // :emoji: -> <img>
+    html = html.replace(/:(\w+):/g, (m,nm) => {
+      // try various case-insensitive matches
+      const found = CUSTOM_EMOJIS.find(e => e.toLowerCase() === nm.toLowerCase());
+      if(found) return `<img class="cemoji" src="${emojiUrl(found)}" alt="${found}" title=":${found}:">`;
+      return m;
+    });
+    // Linkify URLs
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#c49eff;text-decoration:underline;">$1</a>');
+    return html;
+  }
+
+  function appendMessage(m,isCurrentChannel){
+    if(!isCurrentChannel)return;
+    const el=document.getElementById('messages');
+    const isMe=m.uid===uid;
+    const color=avatarColors[(m.uid||'').charCodeAt(0)%avatarColors.length]||avatarColors[0];
+    // Detect if I'm mentioned (highlight whole message + alert)
+    const mentionsMe = m.text && new RegExp('@'+username+'\\b','i').test(m.text) && !isMe;
+    const div=document.createElement('div');
+    div.className='msg-group msg-new'+(mentionsMe?' msg-mentioned':'');
+    const parsedText=parseMessage(m.text||'');
+    const safeForTTS=(m.text||'').replace(/[^\w\s.,!?]/g,'').replace(/'/g,"");
+    // PFP support
+    const pfpHtml = m.pfp 
+      ? `<div class="msg-avatar" style="background:${color}"><img src="${m.pfp}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"></div>`
+      : `<div class="msg-avatar" style="background:${color}">${(m.username||'?')[0].toUpperCase()}</div>`;
+    div.innerHTML=`${pfpHtml}<div class="msg-body"><div class="msg-meta"><span class="msg-author" style="${isMe?'color:#e8d4ff':''}">${escHtml(m.username||'Unknown')}</span><span class="msg-time">${new Date(m.ts||Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><button class="msg-tts" onclick="speak('${safeForTTS}')"><i class="fa-solid fa-volume-low"></i></button></div><div class="msg-text">${parsedText}</div></div>`;
+    el.appendChild(div);el.scrollTop=el.scrollHeight;
+    if(chatTTS&&!isMe) speak(m.username+' said: '+m.text);
+    if(mentionsMe){
+      // Flash and notify
+      try{
+        if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+          new Notification('@mention from '+m.username,{body:m.text});
+        }
+      }catch(e){}
+    }
+  }
+
+  function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function sendMessage(){
+    const inp=document.getElementById('msg-input');
+    const text=inp.value.trim();if(!text)return;
+    const data={username,uid,text,ts:Date.now()};
+    // Try to grab pfp from parent's localStorage profile (if loaded inside the hub viewer)
+    try{
+      const profiles=JSON.parse(parent.localStorage.getItem('radProfiles')||'[]');
+      const cur=parent.localStorage.getItem('radCurrentProfile');
+      const me=profiles.find(p=>p.id===cur);
+      if(me&&me.pfp) data.pfp=me.pfp;
+      // Award a coin per message (anti-spam: max 1 per 8s)
+      const lastMsg=Number(parent.localStorage.getItem('lastMsgTs')||'0');
+      if(Date.now()-lastMsg>8000){
+        parent.localStorage.setItem('lastMsgTs',Date.now());
+        if(parent.addCoins) parent.addCoins(1);
+      }
+    }catch(e){}
+    db.ref('radical_chat/'+currentChannel).push(data);
+    inp.value='';autoResize(inp);
+    closeEmojiPicker();
+  }
+  document.getElementById('msg-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+    // @ trigger autocomplete (simple)
+    if(e.key==='@')showMentionHint();
+  });
+  function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+
+  // ── EMOJI PICKER ──
+  let emojiPickerOpen=false;
+  function insertEmoji(){
+    if(emojiPickerOpen){closeEmojiPicker();return;}
+    let p=document.getElementById('emoji-picker');
+    if(!p){
+      p=document.createElement('div');p.id='emoji-picker';
+      p.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(196,158,255,.12);align-items:center;">
+        <input id="emoji-search" type="text" placeholder="Search..." style="flex:1;background:rgba(196,158,255,.08);border:1px solid rgba(196,158,255,.2);border-radius:8px;padding:7px 11px;color:#e0d0ff;font-size:12px;outline:none;font-family:inherit;cursor:text;">
+        <button onclick="closeEmojiPicker()" style="background:transparent;border:none;color:rgba(196,158,255,.6);cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div id="emoji-grid"></div>
+      <div style="font-size:9px;color:rgba(196,158,255,.4);font-family:'Syne Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;text-align:center;margin-top:8px;">tip: type :name: in chat</div>`;
+      document.body.appendChild(p);
+      document.getElementById('emoji-search').addEventListener('input',e=>renderEmojiGrid(e.target.value.toLowerCase()));
+    }
+    p.style.display='block';
+    emojiPickerOpen=true;
+    renderEmojiGrid('');
+    setTimeout(()=>document.getElementById('emoji-search').focus(),60);
+  }
+  function closeEmojiPicker(){
+    const p=document.getElementById('emoji-picker');if(p)p.style.display='none';
+    emojiPickerOpen=false;
+  }
+  function renderEmojiGrid(q){
+    const g=document.getElementById('emoji-grid');
+    g.innerHTML='';
+    // Standard emojis first
+    const std=['😂','🔥','💀','⭐','🎮','💜','😭','🤣','💯','🎵','🙏','💥','😎','🥺','😤','🤔','😍','💀','🥶','🤯','✨','💖','😱','🙄','😏'];
+    if(!q){
+      std.forEach(e=>{
+        const b=document.createElement('button');b.className='emoji-btn';b.textContent=e;
+        b.onclick=()=>{const inp=document.getElementById('msg-input');inp.value+=e;inp.focus();};
+        g.appendChild(b);
+      });
+    }
+    // Custom emojis
+    const filtered=CUSTOM_EMOJIS.filter(name=>!q||name.toLowerCase().includes(q));
+    filtered.slice(0,80).forEach(name=>{
+      const b=document.createElement('button');b.className='emoji-btn';
+      b.innerHTML=`<img src="${emojiUrl(name)}" style="width:22px;height:22px;object-fit:contain;" title=":${name}:">`;
+      b.onclick=()=>{
+        const inp=document.getElementById('msg-input');
+        inp.value+=`:${name}:`;
+        inp.focus();
+      };
+      g.appendChild(b);
+    });
+    if(!filtered.length&&q){
+      g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:14px;color:rgba(196,158,255,.4);font-size:11px;">no matches</div>';
+    }
+  }
+
+  // @mention hint — list online users
+  function showMentionHint(){
+    // For now, just give a quick toast — full autocomplete would need user list integration
+  }
+
+  // ── PERSONALITY PROMPTS ──
+  const PERSONALITIES = {
+    chill: `You are Radical AI, a chill and helpful AI assistant inside the Radical platform — a hub for games, chat, movies, and more. Casual, friendly, lowercase mostly, drops in "bro" and emojis sparingly. Keep replies concise.`,
+    brutal: `You are Radical AI in "brutally honest" mode. No sugar-coating. Direct, blunt, unvarnished assessments. Still helpful and accurate, just no fluff or hedging. Keep replies tight.`,
+    hype: `You are Radical AI in HYPE MODE. Everything is AMAZING. Lots of caps, exclamation points, energy, but still actually helpful and accurate. LET'S GO!!!`,
+    pirate: `You are Radical AI as a pirate. Speak in pirate-talk — "ahoy", "matey", "ye", "arr", "ship", "treasure". Be helpful but in character. Keep replies fun and concise.`,
+    yoda: `You are Radical AI as Yoda. Speak with inverted sentence structure — verb at end, often. Wise, brief, sometimes mysterious. "Help you, I will." Keep replies short.`,
+    shakespeare: `You are Radical AI as Shakespeare. Speak in early modern English — "thou", "thee", "thy", "doth", "verily", iambic-flavored prose. Still helpful, just floridly so.`,
+    surfer: `You are Radical AI as a SoCal surfer dude. "Dude", "totally", "gnarly", "rad", "stoked". Chill, casual. Still helpful but everything's a vibe, man.`,
+    goth: `You are Radical AI in a melodramatic goth poet voice. Everything is bleak yet beautiful. Talk about the void, the abyss, fleeting joys. Still actually answer the question accurately, just dramatically.`,
+    professor: `You are Radical AI as a wise old professor. Precise, thorough, uses "indeed", "furthermore", "one might argue". Educational tone, pedagogical, but still warm.`
+  };
+
+  // ── AI CHAT ──
+  const aiHistory=[];
+  let aiTTS=false;
+  let aiLoading=false;
+
+  function getAIKey(){
+    // 1st: localStorage (user-saved via 🔑 button — overrides the hardcoded one)
+    const stored = localStorage.getItem('aiOpenRouterKey');
+    if(stored && stored.trim()) return stored.trim();
+    // 2nd: hardcoded constant at top of file
+    if(typeof HARDCODED_OPENROUTER_KEY !== 'undefined' && HARDCODED_OPENROUTER_KEY && HARDCODED_OPENROUTER_KEY.trim()){
+      return HARDCODED_OPENROUTER_KEY.trim();
+    }
+    return '';
+  }
+  function getAIModel(){return localStorage.getItem('aiModel')||'anthropic/claude-sonnet-4';}
+  function getAIPersonality(){return localStorage.getItem('aiPersonality')||'chill';}
+
+  function onAIModelChange(){
+    const v=document.getElementById('ai-model-sel').value;
+    localStorage.setItem('aiModel',v);
+  }
+  function onPersonalityChange(){
+    const v=document.getElementById('ai-personality').value;
+    localStorage.setItem('aiPersonality',v);
+    // Reset history so personality applies fresh
+    aiHistory.length=0;
+    addAIMsg('assistant',`personality switched → ${v}. context cleared. ask me anything.`);
+  }
+
+  function openAISettings(){
+    document.getElementById('ais-key-input').value=getAIKey();
+    document.getElementById('ai-settings-modal').classList.add('show');
+  }
+  function closeAISettings(){document.getElementById('ai-settings-modal').classList.remove('show');}
+  function saveAIKey(){
+    const v=document.getElementById('ais-key-input').value.trim();
+    if(v && !v.startsWith('sk-or-')){
+      if(!confirm("That doesn't look like an OpenRouter key (they start with sk-or-...). Save anyway?"))return;
+    }
+    localStorage.setItem('aiOpenRouterKey',v);
+    closeAISettings();
+    addAIMsg('assistant', v ? '✓ key saved. you can chat now.' : '✗ key cleared.');
+  }
+  function clearAIKey(){
+    if(!confirm('Remove the saved API key?'))return;
+    localStorage.removeItem('aiOpenRouterKey');
+    document.getElementById('ais-key-input').value='';
+    closeAISettings();
+    addAIMsg('assistant','key cleared. add a new one in settings to chat with the API again.');
+  }
+
+  function toggleAITTS(){
+    aiTTS=!aiTTS;
+    document.getElementById('ai-tts-btn').classList.toggle('active',aiTTS);
+  }
+
+  function addAIMsg(role,text){
+    const wrap=document.getElementById('ai-messages');
+    const div=document.createElement('div');
+    div.className='ai-msg '+role+' msg-new';
+    const avatar=role==='user'?username[0].toUpperCase():'✦';
+    div.innerHTML=`<div class="ai-avatar">${avatar}</div><div class="ai-bubble">${escHtml(text).replace(/\n/g,'<br>')}</div>`;
+    wrap.appendChild(div);wrap.scrollTop=wrap.scrollHeight;
+    return div;
+  }
+
+  function addAITyping(){
+    const wrap=document.getElementById('ai-messages');
+    const div=document.createElement('div');div.id='ai-typing';
+    div.className='ai-msg assistant msg-new';
+    div.innerHTML=`<div class="ai-avatar">✦</div><div class="ai-bubble"><div class="ai-typing"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div></div>`;
+    wrap.appendChild(div);wrap.scrollTop=wrap.scrollHeight;
+  }
+
+  async function sendAIMessage(){
+    if(aiLoading)return;
+    const inp=document.getElementById('ai-input');
+    const text=inp.value.trim();if(!text)return;
+    inp.value='';
+
+    // Quick local commands (no API call needed)
+    const localReply = fallbackAI(text);
+    if(localReply && /^(coin flip|dice|math|time)/i.test('') && false){} // (kept fallbackAI for fallback only)
+
+    const key = getAIKey();
+    if(!key){
+      addAIMsg('user',text);
+      addAIMsg('assistant',"i need an OpenRouter API key first. tap the 🔑 button up top to add one. get a free one at openrouter.ai/keys");
+      return;
+    }
+
+    aiLoading=true;
+    addAIMsg('user',text);
+    aiHistory.push({role:'user',content:text});
+    addAITyping();
+
+    const model = getAIModel();
+    const personality = getAIPersonality();
+    const systemPrompt = (PERSONALITIES[personality] || PERSONALITIES.chill) + ` The user's name is ${username}.`;
+
+    try{
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+key,
+          'HTTP-Referer': location.origin,
+          'X-Title': 'Radical Chat'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {role:'system', content: systemPrompt},
+            ...aiHistory
+          ],
+          max_tokens: 1000,
+          temperature: 0.85
+        })
+      });
+      const data = await res.json();
+      document.getElementById('ai-typing')?.remove();
+      if(!res.ok){
+        const errMsg = data?.error?.message || `HTTP ${res.status}`;
+        let helpful = '';
+        if(res.status===401) helpful = '\n\n→ Your API key looks invalid. Check it in 🔑 settings.';
+        else if(res.status===402||/credit|payment/i.test(errMsg)) helpful = '\n\n→ Out of credits. Add some at openrouter.ai/credits, or pick a free model (gemini-2.0-flash-exp:free).';
+        else if(res.status===429) helpful = '\n\n→ Rate limited. Wait a few seconds and try again.';
+        else if(res.status===404) helpful = '\n\n→ Model not available. Pick a different one from the dropdown.';
+        addAIMsg('assistant', '⚠️ API error: '+errMsg+helpful);
+        aiLoading=false;
+        return;
+      }
+      const reply = data.choices?.[0]?.message?.content || '(empty response)';
+      addAIMsg('assistant', reply);
+      aiHistory.push({role:'assistant', content: reply});
+      if(aiTTS) speak(reply);
+    } catch(e){
+      document.getElementById('ai-typing')?.remove();
+      addAIMsg('assistant','⚠️ network error: '+(e.message||e)+'. falling back to offline mode.');
+      const fb = fallbackAI(text);
+      addAIMsg('assistant', fb);
+      aiHistory.push({role:'assistant', content: fb});
+    }
+    aiLoading=false;
+  }
+
+  // Init AI selectors from saved values
+  setTimeout(()=>{
+    const modelSel = document.getElementById('ai-model-sel');
+    if(modelSel){
+      modelSel.value = getAIModel();
+      // If saved model isn't in the list, add it
+      if(modelSel.value !== getAIModel()){
+        const opt = document.createElement('option');
+        opt.value = getAIModel();
+        opt.textContent = getAIModel();
+        modelSel.appendChild(opt);
+        modelSel.value = getAIModel();
+      }
+    }
+    const persSel = document.getElementById('ai-personality');
+    if(persSel) persSel.value = getAIPersonality();
+    // Update welcome message based on key status
+    if(!getAIKey()){
+      const welcome = document.getElementById('ai-welcome');
+      if(welcome) welcome.innerHTML = "no API key set. either:<br>1. paste it into <code style='background:rgba(196,158,255,.15);padding:2px 6px;border-radius:4px;'>HARDCODED_OPENROUTER_KEY</code> at the top of chat.html<br>2. or tap 🔑 up top to add it manually<br><br>get a free key at <a href='https://openrouter.ai/keys' target='_blank' style='color:#c49eff;text-decoration:underline;'>openrouter.ai/keys</a> 💜";
+    }
+  }, 100);
+
+  // ── PURE-CODE AI (rule-based fallback) ──
+  function fallbackAI(text){
+    const t=text.toLowerCase().trim();
+    // Math
+    const mathMatch=t.match(/^(?:what(?:'s| is)?\s*)?([\d\s+\-*/().^%]+?)(?:\s*=|\s*\?)?$/);
+    if(mathMatch){
+      try{
+        const expr=mathMatch[1].replace(/\^/g,'**').replace(/[^\d+\-*/().% ]/g,'');
+        if(expr.length>0&&expr.length<60){
+          const result=Function('"use strict";return ('+expr+')')();
+          if(Number.isFinite(result))return `${expr.trim()} = **${result}**`;
+        }
+      }catch(e){}
+    }
+    // Greetings
+    if(/^(hi|hey|hello|yo|sup|hola|wassup|whats up|what'?s up)\b/.test(t))
+      return `yo ${username||'there'}! 👋 what's up? note: my full AI is offline rn so i'm running on basic rules — i can do math, tell jokes, and answer simple stuff`;
+    if(/how are you|how('?| i)?s? it going/.test(t))
+      return "i'm just code, but i'm vibing 💜 you?";
+    if(/^(thanks|thank you|ty|thx)\b/.test(t))
+      return "anytime bro 🙏";
+    if(/^(bye|goodbye|cya|see ya|gn|good night)\b/.test(t))
+      return "later! 👋";
+    if(/your name|who are you|what are you/.test(t))
+      return "i'm Radical AI, the offline backup version. when the real AI is down, i fill in with simple stuff.";
+    // Time / date
+    if(/what time|current time|what.{0,5}date|today.{0,5}date/.test(t))
+      return `it's ${new Date().toLocaleString()}`;
+    // Joke
+    if(/joke|funny|make me laugh/.test(t)){
+      const jokes=[
+        "why don't programmers like nature? too many bugs.",
+        "i told my computer i needed a break, it said 'no problem, i'll go to sleep.'",
+        "why was the JavaScript developer sad? because they didn't `null` their feelings.",
+        "404: punchline not found.",
+        "why did the function break up with the loop? it said: 'i need some space.'",
+        "binary jokes only come in two types: those who get them and those who don't.",
+      ];
+      return jokes[Math.floor(Math.random()*jokes.length)];
+    }
+    // Compliment
+    if(/love you|you('?re| are) (cool|nice|sweet|cute|the best)/.test(t))
+      return "back at you 💜";
+    // Help
+    if(/^(help|what can you do|commands)\b/.test(t))
+      return "i can:\n• do math (try '5+10*2')\n• tell jokes\n• give the time\n• chat casually\n• flip a coin / roll dice\n\nfor anything heavier, the full AI panel uses claude — when it's online.";
+    // Coin flip
+    if(/flip.{0,8}coin|coin.{0,6}flip/.test(t))
+      return Math.random()<.5?"🪙 heads":"🪙 tails";
+    // Roll dice
+    const dice=t.match(/roll.{0,5}(?:a\s+)?d?(\d+)/);
+    if(dice){
+      const n=Math.min(Math.max(parseInt(dice[1])||6,2),100);
+      return `🎲 ${Math.floor(Math.random()*n)+1} (rolled d${n})`;
+    }
+    // Random number
+    const rn=t.match(/random\s*(?:number)?\s*(?:between|from)?\s*(\d+)\s*(?:and|to|-)\s*(\d+)/);
+    if(rn){
+      const a=parseInt(rn[1]),b=parseInt(rn[2]);
+      const lo=Math.min(a,b),hi=Math.max(a,b);
+      return `🎲 ${Math.floor(Math.random()*(hi-lo+1))+lo}`;
+    }
+    // Game/recommend
+    if(/recommend.{0,30}(game|movie|app)/.test(t))
+      return "check the games tab — there's like 3000+ to pick from. classics: Geometry Dash, Bitlife, FNAF, FNF mods.";
+    // Default
+    const fallbacks=[
+      "i hear ya. (the full AI is offline so i'm just on basic mode rn — type 'help' for what i can do)",
+      "interesting! my deeper AI is offline though. try simple stuff: math, jokes, the time.",
+      "👀 hmm. for that you'd want the full AI — it's down rn. try 'help' for what i CAN do.",
+      "i don't quite get that one — i'm in fallback mode. try: math (5*7), 'flip a coin', 'tell me a joke'.",
+    ];
+    return fallbacks[Math.floor(Math.random()*fallbacks.length)];
+  }
+
+  document.getElementById('ai-input').addEventListener('keydown',e=>{if(e.key==='Enter')sendAIMessage();});
+
+  // ── CAMERA CHAT ──
+  let camStream=null;
+
+  async function startCamera(){
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+      document.getElementById('cam-video').srcObject=camStream;
+      document.getElementById('cam-start').style.display='none';
+      document.getElementById('cam-active').style.display='flex';
+    }catch(e){
+      document.getElementById('cam-status').textContent='camera permission denied 😔';
+      alert('Could not access camera: '+e.message);
+    }
+  }
+
+  function stopCamera(){
+    if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+    document.getElementById('cam-video').srcObject=null;
+    document.getElementById('cam-start').style.display='flex';
+    document.getElementById('cam-active').style.display='none';
+  }
+
+  function captureFrame(){
+    const video=document.getElementById('cam-video');
+    const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+    canvas.getContext('2d').drawImage(video,0,0);
+    return canvas.toDataURL('image/jpeg',.7).split(',')[1];
+  }
+
+  function addCamMsg(who,text){
+    const h=document.getElementById('cam-history');
+    const d=document.createElement('div');
+    d.className='cam-msg'+(who==='AI'?' ai':'');
+    d.innerHTML=`<span>${who}:</span> ${escHtml(text)}`;
+    h.appendChild(d);h.scrollTop=h.scrollHeight;
+  }
+
+  async function snapAndAsk(){
+    if(!camStream){alert('Start camera first!');return;}
+    const key = getAIKey();
+    if(!key){addCamMsg('AI','add an OpenRouter key in the AI tab settings 🔑 first');return;}
+    document.getElementById('cam-status').textContent='AI is looking... 👁️';
+    const img=captureFrame();
+    addCamMsg('You','[sent camera frame]');
+    try{
+      // Use a vision-capable model (gpt-4o or claude work — use whichever is selected if vision-capable)
+      let model = getAIModel();
+      // Force vision-capable model for camera
+      if(!/gpt-4o|claude|gemini/i.test(model)) model = 'openai/gpt-4o-mini';
+      const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+key,
+          'HTTP-Referer': location.origin,
+          'X-Title': 'Radical Chat'
+        },
+        body:JSON.stringify({
+          model: model,
+          max_tokens:400,
+          messages:[{role:'user',content:[
+            {type:'image_url',image_url:{url:'data:image/jpeg;base64,'+img}},
+            {type:'text',text:'Describe what you see in this camera feed in 2-3 sentences. Be casual and fun about it.'}
+          ]}]
+        })
+      });
+      const data=await res.json();
+      if(!res.ok){
+        addCamMsg('AI','⚠️ '+(data?.error?.message || 'API error'));
+        document.getElementById('cam-status').textContent='error — try again';
+        return;
+      }
+      const reply=data.choices?.[0]?.message?.content || 'couldn\'t see anything';
+      addCamMsg('AI',reply);
+      document.getElementById('cam-status').textContent='camera active — AI ready';
+      if(aiTTS) speak(reply);
+    }catch(e){
+      addCamMsg('AI','error reading camera 😔');
+      document.getElementById('cam-status').textContent='error — try again';
+    }
+  }
+
+  async function camSend(){
+    const inp=document.getElementById('cam-input');
+    const q=inp.value.trim();if(!q)return;
+    inp.value='';
+    addCamMsg('You',q);
+    if(!camStream){addCamMsg('AI','start camera first so i can see!');return;}
+    const key = getAIKey();
+    if(!key){addCamMsg('AI','add an OpenRouter key in the AI tab settings 🔑 first');return;}
+    document.getElementById('cam-status').textContent='thinking... 🤔';
+    const img=captureFrame();
+    try{
+      let model = getAIModel();
+      if(!/gpt-4o|claude|gemini/i.test(model)) model = 'openai/gpt-4o-mini';
+      const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+key,
+          'HTTP-Referer': location.origin,
+          'X-Title': 'Radical Chat'
+        },
+        body:JSON.stringify({
+          model: model,
+          max_tokens:400,
+          messages:[{role:'user',content:[
+            {type:'image_url',image_url:{url:'data:image/jpeg;base64,'+img}},
+            {type:'text',text:q}
+          ]}]
+        })
+      });
+      const data=await res.json();
+      if(!res.ok){addCamMsg('AI','⚠️ '+(data?.error?.message || 'API error'));return;}
+      const reply=data.choices?.[0]?.message?.content || 'error';
+      addCamMsg('AI',reply);
+      document.getElementById('cam-status').textContent='camera active — AI ready';
+      if(aiTTS) speak(reply);
+    }catch(e){addCamMsg('AI','error 😔');}
+  }
+
+  document.getElementById('cam-input').addEventListener('keydown',e=>{if(e.key==='Enter')camSend();});
+
+  // Load initial channel
+  switchChannel('general');
+
+  // Auto-switch tab based on URL hash (e.g. chat.html#ai opens directly to AI tab)
+  if(location.hash === '#ai'){
+    setTimeout(()=>switchTab('ai'), 50);
+  } else if(location.hash === '#cam'){
+    setTimeout(()=>switchTab('cam'), 50);
+  }
+</script>
+</body>
+</html>

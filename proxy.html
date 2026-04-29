@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Radical — Proxy</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{font-family:'Outfit',sans-serif;color:#e0d0ff;background:radial-gradient(ellipse at top,#1a0050 0%,#0e0028 60%,#08001a 100%);min-height:100vh;cursor:none;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+button,input,a{font-family:inherit;cursor:none;}
+::selection{background:rgba(196,158,255,.4);color:#fff;}
+
+/* CURSOR */
+#cur{position:fixed;z-index:99999;pointer-events:none;width:12px;height:12px;border-radius:50%;background:rgba(196,158,255,.95);top:0;left:0;box-shadow:0 0 14px rgba(196,158,255,.8),0 0 30px rgba(123,47,255,.35);transition:width .15s,height .15s;}
+#ring{position:fixed;z-index:99998;pointer-events:none;width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(196,158,255,.3);top:0;left:0;transition:width .28s,height .28s;}
+
+/* STARS */
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 4s ease-in-out infinite;pointer-events:none;}
+@keyframes twinkle{0%,100%{opacity:.3;}50%{opacity:1;}}
+#stars-bg{position:fixed;inset:0;z-index:-1;overflow:hidden;}
+#stars-bg::before,#stars-bg::after{content:'';position:absolute;inset:0;pointer-events:none;}
+#stars-bg::before{background:radial-gradient(circle at 20% 30%,rgba(123,47,255,.18),transparent 40%);}
+#stars-bg::after{background:radial-gradient(circle at 80% 70%,rgba(196,158,255,.12),transparent 40%);}
+
+/* HERO */
+#main{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:60px 20px 40px;}
+.hero{text-align:center;margin-bottom:30px;animation:fadeUp .55s cubic-bezier(.22,1,.36,1);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+
+.hero-eyebrow{font-size:11px;font-family:'Syne Mono',monospace;color:rgba(196,158,255,.5);letter-spacing:5px;text-transform:uppercase;margin-bottom:10px;}
+.hero-title{font-size:clamp(48px,9vw,90px);font-weight:800;letter-spacing:-3px;line-height:.95;margin-bottom:14px;background:linear-gradient(135deg,#fff 30%,#c49eff 60%,#7b2fff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:15px;color:rgba(196,158,255,.65);font-weight:400;max-width:540px;margin:0 auto;line-height:1.5;}
+
+/* STATUS DOT */
+.status-row{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:14px;font-size:11px;font-family:'Syne Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:rgba(196,158,255,.45);flex-wrap:wrap;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;}
+.status-dot.ready{background:#3cff9a;box-shadow:0 0 10px rgba(60,255,154,.6);animation:pulse 2s ease-in-out infinite;}
+.status-dot.loading{background:#ffd700;box-shadow:0 0 10px rgba(255,215,0,.5);}
+.status-dot.error{background:#ff5050;box-shadow:0 0 10px rgba(255,80,80,.5);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.diag-btn{background:transparent;border:1px solid rgba(196,158,255,.25);color:rgba(196,158,255,.65);padding:5px 12px;border-radius:100px;font-size:10px;font-family:'Syne Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
+.diag-btn:hover{border-color:rgba(196,158,255,.5);color:#c49eff;}
+
+#diag-panel{margin-top:14px;padding:14px 18px;background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.25);border-radius:12px;font-size:11px;font-family:'Syne Mono',monospace;color:rgba(255,200,180,.8);max-width:720px;width:94vw;display:none;line-height:1.7;letter-spacing:.5px;}
+#diag-panel.show{display:block;}
+#diag-panel .ok{color:#3cff9a;}
+#diag-panel .bad{color:#ff8090;}
+#diag-panel pre{font-family:inherit;white-space:pre-wrap;word-break:break-all;margin-top:8px;color:rgba(255,255,255,.6);font-size:10px;}
+
+/* URL BAR */
+.url-bar{display:flex;align-items:stretch;gap:0;width:min(720px,94vw);margin-top:36px;background:rgba(20,4,50,.7);backdrop-filter:blur(20px);border:1.5px solid rgba(196,158,255,.22);border-radius:18px;padding:6px;animation:fadeUp .65s cubic-bezier(.22,1,.36,1) .12s both;transition:all .25s;box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 0 0 rgba(196,158,255,.0);}
+.url-bar:focus-within{border-color:rgba(196,158,255,.7);box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 0 6px rgba(196,158,255,.12);transform:translateY(-1px);}
+.url-bar i.fa-magnifying-glass{align-self:center;padding:0 18px;color:rgba(196,158,255,.6);font-size:14px;}
+.url-bar input{flex:1;background:transparent;border:none;color:#fff;font-size:16px;font-weight:500;padding:14px 4px;outline:none;cursor:text;font-family:inherit;}
+.url-bar input::placeholder{color:rgba(196,158,255,.4);}
+.url-bar button{padding:0 28px;background:linear-gradient(135deg,#7b2fff,#c49eff);border:none;border-radius:14px;color:#fff;font-weight:800;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;transition:all .18s;}
+.url-bar button:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(123,47,255,.5);}
+.url-bar button:active{transform:translateY(0);}
+
+/* CHIP ROW */
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:720px;margin-top:18px;animation:fadeUp .7s cubic-bezier(.22,1,.36,1) .2s both;}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;background:rgba(196,158,255,.07);border:1px solid rgba(196,158,255,.18);border-radius:100px;color:rgba(196,158,255,.75);font-size:12px;font-weight:600;transition:all .15s;}
+.chip:hover{background:rgba(196,158,255,.18);border-color:rgba(196,158,255,.5);color:#fff;transform:translateY(-1px);}
+.chip i{font-size:11px;}
+
+/* QUICK SITES */
+.section{margin-top:42px;width:min(900px,94vw);animation:fadeUp .8s cubic-bezier(.22,1,.36,1) .3s both;}
+.section-h{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 4px;}
+.section-h-i{font-size:18px;}
+.section-h-t{font-size:13px;font-weight:800;color:#fff;letter-spacing:.5px;}
+.section-h-c{font-size:10px;font-family:'Syne Mono',monospace;color:rgba(196,158,255,.45);letter-spacing:2px;margin-left:auto;}
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.qcard{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;background:rgba(20,4,50,.5);border:1px solid rgba(196,158,255,.12);border-radius:14px;transition:all .25s cubic-bezier(.22,1,.36,1);text-align:center;}
+.qcard:hover{transform:translateY(-3px);border-color:rgba(196,158,255,.5);background:rgba(123,47,255,.15);box-shadow:0 12px 28px rgba(123,47,255,.3);}
+.qcard-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:10px;background:rgba(196,158,255,.1);overflow:hidden;}
+.qcard-icon img{width:26px;height:26px;border-radius:5px;}
+.qcard-name{font-size:12px;font-weight:700;color:#e0d0ff;}
+.qcard-host{font-size:9px;color:rgba(196,158,255,.45);font-family:'Syne Mono',monospace;letter-spacing:1px;}
+
+/* RECENT */
+.recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.recent-card{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(20,4,50,.5);border:1px solid rgba(196,158,255,.1);border-radius:11px;transition:all .15s;animation:fadeUp .3s ease-out both;}
+.recent-card:hover{border-color:rgba(196,158,255,.4);background:rgba(123,47,255,.12);transform:translateX(2px);}
+.recent-card .ricon{width:24px;height:24px;border-radius:5px;background:rgba(196,158,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;color:#c49eff;flex-shrink:0;}
+.recent-card .rinfo{flex:1;min-width:0;}
+.recent-card .rurl{font-size:12px;color:#e0d0ff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.recent-card .rtime{font-size:9px;color:rgba(196,158,255,.45);font-family:'Syne Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-top:1px;}
+.recent-card .rdel{background:transparent;border:none;color:rgba(196,158,255,.4);padding:4px;font-size:11px;border-radius:4px;}
+.recent-card .rdel:hover{color:#ff8090;background:rgba(255,80,80,.1);}
+.empty-recent{text-align:center;padding:24px;color:rgba(196,158,255,.4);font-size:12px;font-family:'Syne Mono',monospace;letter-spacing:1.5px;}
+
+/* PROXY VIEWER (full-screen iframe wrap) */
+#proxy-viewer{position:fixed;inset:0;background:#000;z-index:1000;display:none;flex-direction:column;animation:fadeIn .25s ease-out;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+#proxy-viewer.show{display:flex;}
+.pv-bar{height:48px;background:linear-gradient(180deg,rgba(20,4,50,.98),rgba(14,2,36,.95));backdrop-filter:blur(16px);border-bottom:1px solid rgba(196,158,255,.15);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;}
+.pv-back{width:32px;height:32px;border-radius:8px;background:rgba(196,158,255,.1);border:1px solid rgba(196,158,255,.18);color:#c49eff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.pv-back:hover{background:rgba(196,158,255,.22);}
+.pv-url{flex:1;background:rgba(196,158,255,.06);border:1px solid rgba(196,158,255,.15);border-radius:9px;padding:8px 14px;color:#e0d0ff;font-size:12px;font-weight:500;outline:none;font-family:inherit;cursor:text;}
+.pv-url:focus{border-color:rgba(196,158,255,.5);}
+.pv-actions{display:flex;gap:5px;flex-shrink:0;}
+.pv-btn{width:32px;height:32px;border-radius:8px;background:rgba(196,158,255,.08);border:1px solid rgba(196,158,255,.15);color:#c49eff;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.pv-btn:hover{background:rgba(196,158,255,.22);}
+.pv-btn.danger:hover{background:rgba(255,80,100,.18);border-color:rgba(255,80,100,.5);color:#ff8090;}
+#pv-frame{flex:1;border:none;background:#000;width:100%;}
+#pv-loading{position:absolute;inset:48px 0 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:#0e0028;z-index:5;}
+#pv-loading.done{display:none;}
+.pv-spin{width:46px;height:46px;border:3px solid rgba(196,158,255,.15);border-top-color:#c49eff;border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.pv-loadtxt{font-size:11px;font-family:'Syne Mono',monospace;color:rgba(196,158,255,.55);letter-spacing:3px;text-transform:uppercase;}
+
+/* BACK TO HUB */
+.back-hub{position:fixed;top:18px;left:18px;display:flex;align-items:center;gap:8px;padding:9px 16px;background:rgba(20,4,50,.85);backdrop-filter:blur(14px);border:1px solid rgba(196,158,255,.18);border-radius:100px;color:#c49eff;font-size:12px;font-weight:700;letter-spacing:.5px;transition:all .2s;text-decoration:none;z-index:50;}
+.back-hub:hover{transform:translateX(-2px);background:rgba(196,158,255,.2);border-color:rgba(196,158,255,.5);}
+
+/* WARNING / TIP */
+.warn{background:rgba(255,170,68,.06);border:1px solid rgba(255,170,68,.2);border-radius:12px;padding:14px 18px;margin-top:30px;width:min(720px,94vw);font-size:12px;color:rgba(255,200,100,.85);line-height:1.55;animation:fadeUp .85s cubic-bezier(.22,1,.36,1) .35s both;}
+.warn strong{color:#ffd97a;letter-spacing:.5px;font-weight:800;display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;font-family:'Syne Mono',monospace;}
+
+/* MOBILE */
+@media (max-width:680px){
+  body{cursor:auto;}
+  #cur,#ring{display:none;}
+  button,input,a{cursor:auto;}
+  #main{padding:80px 14px 30px;}
+  .hero-title{font-size:54px;}
+  .url-bar{flex-direction:column;}
+  .url-bar i.fa-magnifying-glass{padding:14px 0 0;}
+  .url-bar input{padding:12px 18px;text-align:center;}
+  .url-bar button{padding:14px 0;}
+}
+</style>
+</head>
+<body>
+<div id="cur"></div>
+<div id="ring"></div>
+<div id="stars-bg"></div>
+
+<a href="hub.html" class="back-hub">
+  <i class="fa-solid fa-arrow-left"></i> back to hub
+</a>
+
+<main id="main">
+  <div class="hero">
+    <div class="hero-eyebrow">unblock anything</div>
+    <h1 class="hero-title">proxy</h1>
+    <div class="hero-sub">browse the web through Radical's proxy. powered by Ultraviolet.</div>
+    <div class="status-row">
+      <div class="status-dot loading" id="status-dot"></div>
+      <span id="status-text">starting service worker...</span>
+      <button class="diag-btn" onclick="runDiagnostics()">run diagnostics</button>
+    </div>
+    <div id="diag-panel"></div>
+  </div>
+
+  <div class="url-bar" id="url-form">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" id="url-input" placeholder="search Google or enter a URL..." autocomplete="off" autofocus spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();goProxy(event);}">
+    <button type="button" onclick="goProxy(event)">Browse →</button>
+  </div>
+
+  <div class="chip-row">
+    <button class="chip" onclick="setSearchEngine('google')"><i class="fa-brands fa-google"></i> Google</button>
+    <button class="chip" onclick="setSearchEngine('duck')"><i class="fa-solid fa-feather"></i> DuckDuckGo</button>
+    <button class="chip" onclick="setSearchEngine('bing')"><i class="fa-brands fa-microsoft"></i> Bing</button>
+    <button class="chip" onclick="setSearchEngine('brave')"><i class="fa-brands fa-brave"></i> Brave</button>
+    <button class="chip" onclick="setSearchEngine('startpage')"><i class="fa-solid fa-page"></i> Startpage</button>
+  </div>
+
+  <div class="section">
+    <div class="section-h">
+      <span class="section-h-i">⚡</span>
+      <span class="section-h-t">Quick Access</span>
+      <span class="section-h-c">popular sites</span>
+    </div>
+    <div class="quick-grid" id="quick-grid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-h">
+      <span class="section-h-i">🕒</span>
+      <span class="section-h-t">Recent</span>
+      <span class="section-h-c">your history</span>
+      <button onclick="clearRecent()" style="background:transparent;border:none;color:rgba(196,158,255,.5);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-family:'Syne Mono',monospace;margin-left:10px;">clear</button>
+    </div>
+    <div class="recent-grid" id="recent-grid"></div>
+  </div>
+
+  <div class="warn">
+    <strong>heads up</strong>
+    Some sites detect proxies and block them (Google login, banking sites, video streaming). Most regular sites work fine. The proxy uses <a href="https://incog.dev" target="_blank" style="color:#c49eff;">incog.dev's</a> public Bare server — if it goes down, the proxy stops working.
+  </div>
+</main>
+
+<!-- PROXY VIEWER -->
+<div id="proxy-viewer">
+  <div class="pv-bar">
+    <button class="pv-back" onclick="closeProxy()" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
+    <input type="text" class="pv-url" id="pv-url-input" onkeydown="if(event.key==='Enter')pvNavigate()" spellcheck="false">
+    <div class="pv-actions">
+      <button class="pv-btn" onclick="pvReload()" title="Reload"><i class="fa-solid fa-rotate"></i></button>
+      <button class="pv-btn" onclick="pvNewTab()" title="New tab"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+      <button class="pv-btn" onclick="pvFullscreen()" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
+      <button class="pv-btn danger" onclick="closeProxy()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+  <div id="pv-loading">
+    <div class="pv-spin"></div>
+    <div class="pv-loadtxt">connecting...</div>
+  </div>
+  <iframe id="pv-frame" src="about:blank" allow="fullscreen *; autoplay *; clipboard-write *; clipboard-read *"></iframe>
+</div>
+
+<!-- UV bundle / config / register -->
+<script src="uv/uv.bundle.js"></script>
+<script src="uv/uv.config.js"></script>
+
+<script>
+// ─── CURSOR ───────────────────────────────────────
+const cur=document.getElementById('cur'),ring=document.getElementById('ring');
+let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;
+addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=(mx-6)+'px';cur.style.top=(my-6)+'px';},{passive:true});
+function ringLoop(){rx+=(mx-rx)*.18;ry+=(my-ry)*.18;ring.style.left=(rx-19)+'px';ring.style.top=(ry-19)+'px';requestAnimationFrame(ringLoop);}ringLoop();
+function cBig(){ring.style.width='52px';ring.style.height='52px';}
+function cNorm(){ring.style.width='38px';ring.style.height='38px';}
+document.querySelectorAll('a,button,.chip,.qcard,.recent-card,input').forEach(el=>{el.addEventListener('mouseenter',cBig);el.addEventListener('mouseleave',cNorm);});
+
+// ─── STARFIELD ────────────────────────────────────
+(function(){const bg=document.getElementById('stars-bg');for(let i=0;i<70;i++){const s=document.createElement('div');s.className='star';const r=Math.random()*1.5+.3;s.style.cssText=`width:${r}px;height:${r}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*4}s;opacity:${.2+Math.random()*.6};`;bg.appendChild(s);}})();
+
+// ─── SERVICE WORKER REGISTRATION ──────────────────
+const statusDot=document.getElementById('status-dot');
+const statusText=document.getElementById('status-text');
+function setStatus(s,msg){statusDot.className='status-dot '+s;statusText.textContent=msg;}
+
+function showFileMissingHelp(){
+  const panel = document.getElementById('diag-panel');
+  panel.classList.add('show');
+  panel.innerHTML = `<strong style="color:#ff8090;font-size:13px;display:block;margin-bottom:10px;">⚠️ UV files not found on this server</strong>
+The /uv/ folder didn't upload to your hosting. Check that these 4 files exist at <code style="color:#c49eff;">${location.origin}${location.pathname.replace(/[^\/]*$/,'')}uv/</code>:
+<br><br>
+&nbsp;&nbsp;• uv.bundle.js<br>
+&nbsp;&nbsp;• uv.config.js<br>
+&nbsp;&nbsp;• uv.handler.js<br>
+&nbsp;&nbsp;• uv.sw.js<br>
+<br>
+Open <code style="color:#c49eff;">${location.origin}${location.pathname.replace(/[^\/]*$/,'')}uv/uv.bundle.js</code> in a new tab. If it 404s, the files aren't uploaded. If it loads, hard-refresh this page (Ctrl+Shift+R) to clear cache.`;
+}
+
+async function registerUV(){
+  if(!('serviceWorker' in navigator)){
+    setStatus('error','service workers not supported in this browser');
+    return false;
+  }
+  // HTTPS check — SWs require secure context (or localhost)
+  const isSecure = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1' || location.hostname.startsWith('192.168.');
+  if(!isSecure){
+    setStatus('error',`HTTPS required (you're on ${location.protocol}). Host on https or localhost`);
+    return false;
+  }
+  // Check that uv.bundle.js actually loaded (defines Ultraviolet) and uv.config.js loaded
+  if(typeof Ultraviolet==='undefined'){
+    setStatus('error','uv/uv.bundle.js failed to load — check the /uv folder is uploaded');
+    showFileMissingHelp();
+    return false;
+  }
+  if(typeof self.__uv$config==='undefined'){
+    setStatus('error','uv/uv.config.js failed to load — check the /uv folder is uploaded');
+    showFileMissingHelp();
+    return false;
+  }
+  // Compute base path so this works whether site is at root or a subpath
+  const basePath = location.pathname.replace(/\/[^\/]*$/,'/'); // strip "proxy.html"
+  const swPath = basePath + 'uv/uv.sw.js';
+  const swScope = basePath + 'uv/service/';
+  // Update __uv$config to use the right scope/paths
+  if(self.__uv$config){
+    __uv$config.prefix = swScope;
+    __uv$config.bundle = basePath+'uv/uv.bundle.js';
+    __uv$config.handler = basePath+'uv/uv.handler.js';
+    __uv$config.config = basePath+'uv/uv.config.js';
+    __uv$config.sw = swPath;
+  }
+  try{
+    setStatus('loading','registering UV worker...');
+    const reg = await navigator.serviceWorker.register(swPath, {scope: swScope});
+
+    setStatus('loading','waiting for worker to install...');
+    // Wait for installation
+    await new Promise((resolve, reject)=>{
+      const timeout=setTimeout(()=>reject(new Error('install timeout')),12000);
+      if(reg.active && reg.active.state==='activated'){clearTimeout(timeout);resolve();return;}
+      const sw = reg.installing || reg.waiting || reg.active;
+      if(!sw){clearTimeout(timeout);reject(new Error('no SW worker'));return;}
+      sw.addEventListener('statechange', function listener(){
+        if(sw.state==='activated'){clearTimeout(timeout);sw.removeEventListener('statechange',listener);resolve();}
+        else if(sw.state==='redundant'){clearTimeout(timeout);reject(new Error('SW redundant'));}
+      });
+    });
+
+    // CRITICAL: after first registration, the page is NOT controlled by the SW yet.
+    // The SW only controls pages that loaded *after* it activated.
+    // navigator.serviceWorker.controller is null on the first visit.
+    // We need to either reload, OR claim() — but claim has to happen IN the SW.
+    // Easiest fix: reload the page once after first activation.
+    if(!navigator.serviceWorker.controller){
+      setStatus('loading','activating worker — reloading page...');
+      // Mark that we've reloaded so we don't loop forever if something's wrong
+      if(!sessionStorage.getItem('uv_reloaded_once')){
+        sessionStorage.setItem('uv_reloaded_once','1');
+        setTimeout(()=>location.reload(),300);
+        return false; // don't mark as ready, we're about to reload
+      } else {
+        // Already reloaded, but still no controller — fall back to direct fetch
+        setStatus('ready','proxy ready (direct mode — type a URL)');
+        return true;
+      }
+    }
+
+    setStatus('ready','proxy ready — type a URL');
+    return true;
+  } catch(e){
+    console.error('UV registration failed:',e);
+    // Still allow direct-fetch fallback
+    setStatus('ready','proxy ready (direct mode — type a URL)');
+    return true;
+  }
+}
+let uvReady=false;
+registerUV().then(ok=>{uvReady=ok;});
+
+// ─── DIAGNOSTICS ───────────────────────────────
+async function runDiagnostics(){
+  const panel = document.getElementById('diag-panel');
+  panel.classList.add('show');
+  panel.innerHTML = '🔍 running diagnostics...';
+  const lines = [];
+  function add(label, ok, detail=''){
+    lines.push(`<span class="${ok?'ok':'bad'}">${ok?'✓':'✗'}</span> ${label}${detail?': '+detail:''}`);
+    panel.innerHTML = lines.join('<br>');
+  }
+  // 1. Protocol
+  add('Secure context (HTTPS or localhost)', isSecureContext, location.protocol);
+  // 2. SW support
+  add('Service worker support', 'serviceWorker' in navigator);
+  // 3. UV bundle loaded
+  add('uv.bundle.js loaded (defines Ultraviolet)', typeof Ultraviolet !== 'undefined');
+  // 4. UV config loaded
+  const cfgOk = typeof self.__uv$config !== 'undefined';
+  add('uv.config.js loaded', cfgOk);
+  if(cfgOk){
+    add('  → bare server', !!__uv$config.bare, __uv$config.bare);
+    add('  → prefix path', !!__uv$config.prefix, __uv$config.prefix);
+  }
+  // 5. Try fetching each UV file
+  const basePath = location.pathname.replace(/\/[^\/]*$/,'/');
+  const files = ['uv/uv.bundle.js','uv/uv.handler.js','uv/uv.sw.js','uv/uv.config.js'];
+  for(const f of files){
+    try {
+      const r = await fetch(basePath+f, {cache:'no-store'});
+      const ctype = r.headers.get('content-type') || '(none)';
+      const ok = r.ok && /javascript|ecmascript|text\/plain/i.test(ctype);
+      add(`fetch ${f}`, ok, `HTTP ${r.status}, type: ${ctype}`);
+    } catch(e){
+      add(`fetch ${f}`, false, e.message);
+    }
+  }
+  // 6. Existing SW registrations
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    add('existing SW registrations', true, regs.length+' found');
+    regs.forEach(r=>{
+      lines.push(`  · scope: ${r.scope} | active: ${r.active?.state||'none'} | installing: ${r.installing?.state||'none'} | waiting: ${r.waiting?.state||'none'}`);
+    });
+    panel.innerHTML = lines.join('<br>');
+  } catch(e){
+    add('list SW registrations', false, e.message);
+  }
+  // 7. Bare server reachability
+  if(cfgOk && __uv$config.bare){
+    try {
+      const r = await fetch(__uv$config.bare, {cache:'no-store'});
+      const ok = r.ok;
+      add(`bare server reachable`, ok, `${r.status} ${r.statusText}`);
+    } catch(e){
+      add(`bare server reachable`, false, e.message+' (likely down or CORS-blocked)');
+    }
+  }
+  // 8. Try registering the SW manually with detailed error
+  lines.push('<br><strong>retry registration with full error:</strong>');
+  panel.innerHTML = lines.join('<br>');
+  try {
+    // Unregister first
+    const old = await navigator.serviceWorker.getRegistrations();
+    for(const r of old) if(r.scope.includes('/uv/')) await r.unregister();
+    const reg = await navigator.serviceWorker.register(basePath+'uv/uv.sw.js', {scope:basePath+'uv/service/'});
+    add('register attempt', true, 'registered, scope='+reg.scope);
+  } catch(e){
+    add('register attempt', false, e.message);
+    lines.push(`<pre>${(e.stack||'').replace(/</g,'&lt;')}</pre>`);
+    panel.innerHTML = lines.join('<br>');
+  }
+}
+
+// ─── URL HANDLING ─────────────────────────────────
+let searchEngine=localStorage.getItem('proxySearchEngine')||'google';
+const SEARCH_ENGINES={
+  google:'https://www.google.com/search?q=',
+  duck:'https://duckduckgo.com/?q=',
+  bing:'https://www.bing.com/search?q=',
+  brave:'https://search.brave.com/search?q=',
+  startpage:'https://www.startpage.com/do/search?query='
+};
+function setSearchEngine(name){
+  searchEngine=name;
+  localStorage.setItem('proxySearchEngine',name);
+  document.getElementById('url-input').placeholder=`search ${name} or enter a URL...`;
+  document.getElementById('url-input').focus();
+}
+setSearchEngine(searchEngine);
+
+function inferUrl(input){
+  input=input.trim();
+  if(!input)return null;
+  // already has protocol
+  if(/^https?:\/\//i.test(input))return input;
+  // looks like a domain (has a dot, no spaces)
+  if(/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(input))return 'https://'+input;
+  // localhost / IP
+  if(/^localhost|^\d+\.\d+\.\d+\.\d+/i.test(input))return 'http://'+input;
+  // search query
+  return (SEARCH_ENGINES[searchEngine]||SEARCH_ENGINES.google)+encodeURIComponent(input);
+}
+
+function goProxy(e){
+  if(e)e.preventDefault();
+  const inp=document.getElementById('url-input');
+  const url=inferUrl(inp.value);
+  if(!url)return false;
+  // Don't gate on uvReady — direct-fetch path works even without SW
+  openProxyURL(url);
+  return false;
+}
+
+function openProxyURL(url){
+  // Save to history
+  saveRecent(url);
+  // Open viewer
+  document.getElementById('pv-url-input').value=url;
+  document.getElementById('pv-loading').classList.remove('done');
+  document.querySelector('.pv-loadtxt').textContent='connecting...';
+  document.getElementById('proxy-viewer').classList.add('show');
+  // Try service-worker route first if it's controlling
+  if(navigator.serviceWorker && navigator.serviceWorker.controller){
+    const proxiedPath=__uv$config.prefix+__uv$config.encodeUrl(url);
+    document.getElementById('pv-frame').removeAttribute('srcdoc');
+    document.getElementById('pv-frame').src=proxiedPath;
+  } else {
+    // SW not controlling — direct fetch through bare server
+    directFetchProxy(url);
+  }
+}
+
+// Direct-fetch proxy — bypasses the service worker entirely.
+// Fetches the target URL through the bare server, injects the HTML into the iframe via srcdoc.
+async function directFetchProxy(url){
+  document.querySelector('.pv-loadtxt').textContent='direct fetch (no SW)...';
+  const bareBase = (Array.isArray(__uv$config.bare) ? __uv$config.bare[0] : __uv$config.bare).replace(/\/$/,'');
+  // Bare v3 endpoint
+  const bareEndpoint = bareBase + '/v3/';
+  try {
+    const target = new URL(url);
+    const res = await fetch(bareEndpoint, {
+      method: 'GET',
+      headers: {
+        'x-bare-url': url,
+        'x-bare-headers': JSON.stringify({
+          'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'accept-language': 'en-US,en;q=0.9',
+          'user-agent': navigator.userAgent
+        }),
+        'x-bare-forward-headers': JSON.stringify(['accept','accept-language','user-agent'])
+      }
+    });
+    if(!res.ok){
+      throw new Error(`bare server returned ${res.status} ${res.statusText}`);
+    }
+    const ctype = res.headers.get('content-type') || '';
+    if(!ctype.includes('html')){
+      // Not HTML — just open in new tab
+      throw new Error(`response is ${ctype}, not HTML — opening in new tab`);
+    }
+    let html = await res.text();
+    // Inject <base> so relative URLs work, and rewrite forms/links to flow through proxy
+    const baseHref = url.substring(0, url.lastIndexOf('/')+1);
+    // Inject script to rewrite navigation
+    const navRewriteScript = `<script>
+      (function(){
+        const PROXY_BASE='${location.origin}${location.pathname}#go=';
+        // Rewrite link clicks
+        document.addEventListener('click', e=>{
+          const a = e.target.closest('a[href]');
+          if(!a) return;
+          const href = a.getAttribute('href');
+          if(!href || href.startsWith('javascript:') || href.startsWith('#')) return;
+          try {
+            const abs = new URL(href, '${url}').href;
+            if(abs.startsWith('http')){
+              e.preventDefault();
+              parent.postMessage({type:'proxy-nav',url:abs},'*');
+            }
+          } catch(err){}
+        }, true);
+        // Rewrite form submits
+        document.addEventListener('submit', e=>{
+          const f = e.target;
+          if(!f || !f.action) return;
+          try {
+            const abs = new URL(f.action, '${url}').href;
+            if(abs.startsWith('http')){
+              e.preventDefault();
+              const params = new URLSearchParams(new FormData(f)).toString();
+              const finalUrl = abs + (abs.includes('?') ? '&' : '?') + params;
+              parent.postMessage({type:'proxy-nav',url:finalUrl},'*');
+            }
+          } catch(err){}
+        }, true);
+      })();
+    <\/script>`;
+    if(/<head[^>]*>/i.test(html)){
+      html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}"><meta charset="utf-8">${navRewriteScript}`);
+    } else if(/<html[^>]*>/i.test(html)){
+      html = html.replace(/<html([^>]*)>/i, `<html$1><head><base href="${baseHref}"><meta charset="utf-8">${navRewriteScript}</head>`);
+    } else {
+      html = `<!DOCTYPE html><html><head><base href="${baseHref}"><meta charset="utf-8">${navRewriteScript}</head><body>${html}</body></html>`;
+    }
+    const f = document.getElementById('pv-frame');
+    f.removeAttribute('src');
+    f.srcdoc = html;
+  } catch(e){
+    console.error('direct fetch failed:',e);
+    const ld = document.getElementById('pv-loading');
+    ld.innerHTML = `<div style="text-align:center;color:rgba(196,158,255,.8);padding:30px;max-width:480px;">
+      <div style="font-size:42px;margin-bottom:12px;">⚠️</div>
+      <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">Couldn't load that page</div>
+      <div style="font-size:11px;font-family:'Syne Mono',monospace;letter-spacing:1.5px;color:rgba(196,158,255,.55);margin-bottom:18px;line-height:1.6;">${e.message||e}</div>
+      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank')" style="padding:10px 20px;background:rgba(196,158,255,.2);border:1px solid rgba(196,158,255,.45);border-radius:10px;color:#c49eff;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;">Open in new tab</button>
+    </div>`;
+  }
+}
+
+// Listen for navigation messages from proxied pages
+window.addEventListener('message', e=>{
+  if(e.data && e.data.type==='proxy-nav' && e.data.url){
+    document.getElementById('pv-url-input').value = e.data.url;
+    saveRecent(e.data.url);
+    directFetchProxy(e.data.url);
+  }
+});
+
+function pvLoaded(){
+  document.getElementById('pv-loading').classList.add('done');
+}
+// Attach onload from JS (not inline) so it can't fire before the function is defined
+document.getElementById('pv-frame').addEventListener('load', pvLoaded);
+
+function pvReload(){
+  const url = document.getElementById('pv-url-input').value.trim();
+  if(!url) return;
+  document.getElementById('pv-loading').classList.remove('done');
+  if(navigator.serviceWorker && navigator.serviceWorker.controller){
+    const f=document.getElementById('pv-frame');
+    f.removeAttribute('srcdoc');
+    f.src = __uv$config.prefix + __uv$config.encodeUrl(inferUrl(url));
+  } else {
+    directFetchProxy(inferUrl(url));
+  }
+}
+
+function pvNewTab(){
+  const url=document.getElementById('pv-url-input').value.trim();
+  if(!url)return;
+  // Always open the original URL in a new tab — proxied or not
+  window.open(url,'_blank');
+}
+
+function pvFullscreen(){
+  const v=document.getElementById('proxy-viewer');
+  if(!document.fullscreenElement)v.requestFullscreen?.();
+  else document.exitFullscreen();
+}
+
+function pvNavigate(){
+  const url=inferUrl(document.getElementById('pv-url-input').value);
+  if(!url)return;
+  saveRecent(url);
+  document.getElementById('pv-loading').classList.remove('done');
+  if(navigator.serviceWorker && navigator.serviceWorker.controller){
+    const f=document.getElementById('pv-frame');
+    f.removeAttribute('srcdoc');
+    f.src = __uv$config.prefix+__uv$config.encodeUrl(url);
+  } else {
+    directFetchProxy(url);
+  }
+}
+
+function closeProxy(){
+  document.getElementById('proxy-viewer').classList.remove('show');
+  document.getElementById('pv-frame').src='about:blank';
+  if(document.fullscreenElement)document.exitFullscreen();
+  renderRecent();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('proxy-viewer').classList.contains('show'))closeProxy();
+});
+
+// ─── QUICK SITES ──────────────────────────────────
+const QUICK_SITES=[
+  {n:'YouTube',u:'https://www.youtube.com',i:'fa-brands fa-youtube',c:'#ff0000'},
+  {n:'Discord',u:'https://discord.com/app',i:'fa-brands fa-discord',c:'#5865f2'},
+  {n:'Reddit',u:'https://www.reddit.com',i:'fa-brands fa-reddit-alien',c:'#ff4500'},
+  {n:'Twitter / X',u:'https://twitter.com',i:'fa-brands fa-x-twitter',c:'#fff'},
+  {n:'Twitch',u:'https://www.twitch.tv',i:'fa-brands fa-twitch',c:'#9146ff'},
+  {n:'TikTok',u:'https://www.tiktok.com',i:'fa-brands fa-tiktok',c:'#fff'},
+  {n:'Instagram',u:'https://www.instagram.com',i:'fa-brands fa-instagram',c:'#e1306c'},
+  {n:'Spotify',u:'https://open.spotify.com',i:'fa-brands fa-spotify',c:'#1db954'},
+  {n:'GitHub',u:'https://github.com',i:'fa-brands fa-github',c:'#fff'},
+  {n:'Wikipedia',u:'https://en.wikipedia.org',i:'fa-brands fa-wikipedia-w',c:'#fff'},
+  {n:'Pinterest',u:'https://www.pinterest.com',i:'fa-brands fa-pinterest',c:'#e60023'},
+  {n:'Snapchat',u:'https://web.snapchat.com',i:'fa-brands fa-snapchat',c:'#fffc00'},
+];
+function renderQuick(){
+  const grid=document.getElementById('quick-grid');
+  grid.innerHTML='';
+  QUICK_SITES.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.className='qcard';
+    b.style.animationDelay=(i*.03)+'s';
+    let host;try{host=new URL(s.u).hostname.replace(/^www\./,'');}catch(e){host='';}
+    b.innerHTML=`<div class="qcard-icon" style="color:${s.c};"><i class="${s.i}"></i></div>
+      <div class="qcard-name">${s.n}</div>
+      <div class="qcard-host">${host}</div>`;
+    b.onclick=()=>openProxyURL(s.u);
+    b.addEventListener('mouseenter',cBig);
+    b.addEventListener('mouseleave',cNorm);
+    grid.appendChild(b);
+  });
+}
+renderQuick();
+
+// ─── RECENT (per profile if available) ────────────
+function recentKey(){
+  try{
+    const cur=localStorage.getItem('radCurrentProfile');
+    if(cur)return 'proxyRecent_'+cur;
+  }catch(e){}
+  return 'proxyRecent';
+}
+function loadRecent(){try{return JSON.parse(localStorage.getItem(recentKey())||'[]');}catch(e){return [];}}
+function saveRecent(url){
+  let r=loadRecent();
+  r=r.filter(x=>x.url!==url);
+  r.unshift({url,ts:Date.now()});
+  r=r.slice(0,12);
+  localStorage.setItem(recentKey(),JSON.stringify(r));
+}
+function clearRecent(){
+  if(!confirm('Clear all recent history?'))return;
+  localStorage.removeItem(recentKey());
+  renderRecent();
+}
+function timeAgo(ts){
+  const diff=(Date.now()-ts)/1000;
+  if(diff<60)return 'just now';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+function renderRecent(){
+  const grid=document.getElementById('recent-grid');
+  const r=loadRecent();
+  if(!r.length){
+    grid.outerHTML='<div class="empty-recent">no recent history yet</div>';
+    return;
+  }
+  grid.innerHTML='';
+  r.forEach((item,i)=>{
+    let host=item.url;
+    try{host=new URL(item.url).hostname.replace(/^www\./,'');}catch(e){}
+    const c=document.createElement('div');
+    c.className='recent-card';
+    c.style.animationDelay=(i*.03)+'s';
+    c.innerHTML=`<div class="ricon"><i class="fa-solid fa-globe"></i></div>
+      <div class="rinfo">
+        <div class="rurl">${host}</div>
+        <div class="rtime">${timeAgo(item.ts)}</div>
+      </div>
+      <button class="rdel" onclick="event.stopPropagation();delRecent('${item.url.replace(/'/g,"\\'")}')"><i class="fa-solid fa-xmark"></i></button>`;
+    c.onclick=ev=>{if(ev.target.closest('.rdel'))return;openProxyURL(item.url);};
+    c.addEventListener('mouseenter',cBig);
+    c.addEventListener('mouseleave',cNorm);
+    grid.appendChild(c);
+  });
+}
+function delRecent(url){
+  let r=loadRecent();
+  r=r.filter(x=>x.url!==url);
+  localStorage.setItem(recentKey(),JSON.stringify(r));
+  renderRecent();
+}
+renderRecent();
+
+// Apply panic key from radical settings (so this page also responds)
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const panicKey=localStorage.getItem('rPanicKey')||'1';
+  const panicUrl=localStorage.getItem('rPanicUrl')||'https://launchpad.classlink.com/cfisd';
+  if(e.key===panicKey){window.location.replace(panicUrl);}
+});
+</script>
+</body>
+</html>
