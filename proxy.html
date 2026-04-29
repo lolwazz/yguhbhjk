@@ -468,10 +468,11 @@ function openProxyURL(url){
 async function directFetchProxy(url){
   document.querySelector('.pv-loadtxt').textContent='direct fetch (no SW)...';
   const bareBase = (Array.isArray(__uv$config.bare) ? __uv$config.bare[0] : __uv$config.bare).replace(/\/$/,'');
-  // Bare v3 endpoint
+  // Bare v3 endpoint — note the trailing slash is REQUIRED
   const bareEndpoint = bareBase + '/v3/';
   try {
-    const target = new URL(url);
+    // Bare v3 minimal request — only x-bare-url and x-bare-headers are required.
+    // Don't send x-bare-forward-headers; the server's parser misreads "[]" as a header name.
     const res = await fetch(bareEndpoint, {
       method: 'GET',
       headers: {
@@ -479,27 +480,26 @@ async function directFetchProxy(url){
         'x-bare-headers': JSON.stringify({
           'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'accept-language': 'en-US,en;q=0.9',
-          'user-agent': navigator.userAgent
-        }),
-        'x-bare-forward-headers': JSON.stringify(['accept','accept-language','user-agent'])
-      }
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
+      },
+      cache: 'no-store'
     });
     if(!res.ok){
-      throw new Error(`bare server returned ${res.status} ${res.statusText}`);
+      let errBody = '';
+      try { errBody = await res.text(); } catch(e) {}
+      const errId = res.headers.get('x-bare-error') || '';
+      throw new Error(`bare server returned ${res.status}${errId?' ('+errId+')':''}: ${errBody.slice(0,200)}`);
     }
     const ctype = res.headers.get('content-type') || '';
-    if(!ctype.includes('html')){
-      // Not HTML — just open in new tab
-      throw new Error(`response is ${ctype}, not HTML — opening in new tab`);
+    if(!ctype.includes('html') && !ctype.includes('text/plain')){
+      throw new Error(`response is ${ctype}, not HTML`);
     }
     let html = await res.text();
     // Inject <base> so relative URLs work, and rewrite forms/links to flow through proxy
     const baseHref = url.substring(0, url.lastIndexOf('/')+1);
-    // Inject script to rewrite navigation
     const navRewriteScript = `<script>
       (function(){
-        const PROXY_BASE='${location.origin}${location.pathname}#go=';
-        // Rewrite link clicks
         document.addEventListener('click', e=>{
           const a = e.target.closest('a[href]');
           if(!a) return;
@@ -513,7 +513,6 @@ async function directFetchProxy(url){
             }
           } catch(err){}
         }, true);
-        // Rewrite form submits
         document.addEventListener('submit', e=>{
           const f = e.target;
           if(!f || !f.action) return;
@@ -542,13 +541,52 @@ async function directFetchProxy(url){
   } catch(e){
     console.error('direct fetch failed:',e);
     const ld = document.getElementById('pv-loading');
-    ld.innerHTML = `<div style="text-align:center;color:rgba(196,158,255,.8);padding:30px;max-width:480px;">
+    ld.innerHTML = `<div style="text-align:center;color:rgba(196,158,255,.8);padding:30px;max-width:520px;">
       <div style="font-size:42px;margin-bottom:12px;">⚠️</div>
       <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">Couldn't load that page</div>
-      <div style="font-size:11px;font-family:'Syne Mono',monospace;letter-spacing:1.5px;color:rgba(196,158,255,.55);margin-bottom:18px;line-height:1.6;">${e.message||e}</div>
-      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank')" style="padding:10px 20px;background:rgba(196,158,255,.2);border:1px solid rgba(196,158,255,.45);border-radius:10px;color:#c49eff;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;">Open in new tab</button>
+      <div style="font-size:11px;font-family:'Syne Mono',monospace;letter-spacing:1.2px;color:rgba(196,158,255,.55);margin-bottom:18px;line-height:1.7;word-break:break-word;">${(e.message||e).toString().replace(/</g,'&lt;')}</div>
+      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank')" style="padding:10px 20px;background:rgba(196,158,255,.2);border:1px solid rgba(196,158,255,.45);border-radius:10px;color:#c49eff;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;margin-right:8px;">Open in new tab</button>
+      <button onclick="testBareServer()" style="padding:10px 20px;background:transparent;border:1px solid rgba(196,158,255,.25);border-radius:10px;color:rgba(196,158,255,.7);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;">Test bare server</button>
     </div>`;
   }
+}
+
+// Tests the bare server directly to figure out what's going wrong
+async function testBareServer(){
+  const bareBase = (Array.isArray(__uv$config.bare) ? __uv$config.bare[0] : __uv$config.bare).replace(/\/$/,'');
+  const ld = document.getElementById('pv-loading');
+  ld.innerHTML = '<div style="font-family:\'Syne Mono\',monospace;font-size:11px;line-height:1.7;color:rgba(196,158,255,.8);padding:30px;max-width:560px;text-align:left;">testing bare server...</div>';
+  const div = ld.querySelector('div');
+  const log = (msg, ok)=>{div.innerHTML += '<br><span style="color:'+(ok?'#3cff9a':'#ff8090')+';">'+(ok?'✓':'✗')+'</span> ' + msg;};
+  // Test 1: GET base URL
+  try {
+    const r = await fetch(bareBase+'/', {cache:'no-store'});
+    const txt = await r.text();
+    log(`GET ${bareBase}/ → ${r.status}: ${txt.slice(0,80).replace(/</g,'&lt;')}`, r.ok);
+  } catch(e){ log(`GET ${bareBase}/ failed: ${e.message}`, false); }
+  // Test 2: GET /v3/ to see version response
+  try {
+    const r = await fetch(bareBase+'/v3/', {cache:'no-store'});
+    const txt = await r.text();
+    log(`GET ${bareBase}/v3/ (no headers) → ${r.status}: ${txt.slice(0,200).replace(/</g,'&lt;')}`, true);
+  } catch(e){ log(`GET v3/ failed: ${e.message}`, false); }
+  // Test 3: full Bare v3 request
+  try {
+    const r = await fetch(bareBase+'/v3/', {
+      method:'GET',
+      headers:{
+        'x-bare-url':'https://example.com/',
+        'x-bare-headers':'{"accept":"text/html"}'
+      },
+      cache:'no-store'
+    });
+    const errId = r.headers.get('x-bare-error');
+    const ctype = r.headers.get('content-type') || '';
+    let body = '';
+    try { body = (await r.text()).slice(0, 200); } catch(e){}
+    log(`bare v3 fetch example.com → ${r.status} ${errId?'['+errId+']':''} (${ctype}): ${body.replace(/</g,'&lt;')}`, r.ok);
+  } catch(e){ log(`v3 fetch failed: ${e.message}`, false); }
+  div.innerHTML += '<br><br><span style="color:rgba(196,158,255,.55);">screenshot this and send it to debug.</span>';
 }
 
 // Listen for navigation messages from proxied pages
